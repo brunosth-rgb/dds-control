@@ -3,7 +3,7 @@
 import {
   useState,
   useEffect,
-  useRef,
+  useRef
 } from 'react';
 
 import {
@@ -31,7 +31,7 @@ import {
   DoorOpen,
   Snowflake,
   Warehouse,
-  Upload,
+  Upload
 } from 'lucide-react';
 
 import {
@@ -54,92 +54,94 @@ import {
   fmtDate,
   issues,
   validRecord,
+  reviewReasons,
   epoch,
-  norm,
+  norm
 } from './domain';
 
-import EmailImporter from './email-importer';
-import HashdataPanel from './hashdata-panel';
-import RulesEditor from './rules-editor';
+import EmailImporter
+  from './email-importer';
+
+import HashdataPanel
+  from './hashdata-panel';
+
+import RulesEditor
+  from './rules-editor';
 
 import {
   AdherenceView,
-  DayDashboard,
+  DayDashboard
 } from './operational-views';
-
-import hashdataTests from './hashdata-test-import.json';
 
 import {
   loadWorkspace,
-  saveWorkspaceAction,
+  saveWorkspaceAction
 } from './state-store';
 
 import {
   currentDisplayName,
-  logout,
+  logout
 } from './firebase-client';
 
-
-const menus = [
-  ['HOJE', LayoutDashboard],
-  ['NAVIOS', ShipIcon],
-  ['PENDÊNCIAS', TriangleAlert],
-  ['HISTÓRICO', History],
-  ['ADERÊNCIA', ChartNoAxesCombined],
-  ['CONFIGURAÇÕES', Settings],
+const menus=[
+  ['HOJE',LayoutDashboard],
+  ['NAVIOS',ShipIcon],
+  ['PENDÊNCIAS',TriangleAlert],
+  ['HISTÓRICO',History],
+  ['ADERÊNCIA',ChartNoAxesCombined],
+  ['CONFIGURAÇÕES',Settings]
 ] as const;
 
-
-const statusClass = (
-  s: string
-) =>
-  s === 'Realizado'
-    ? 'success'
-    : s ===
-        'Realizado com pendência'
-      ? 'incomplete'
-      : s === 'Atrasado'
-        ? 'danger'
-        : s === 'Aguardando'
-          ? 'warning'
-          : s === 'Justificado'
-            ? 'justified'
-            : 'neutral';
-
+const statusClass=
+  (s:string)=>
+    s==='Realizado'
+      ?'success'
+      :s==='Realizado com pendência'
+        ?'incomplete'
+        :s==='Atrasado'
+          ?'danger'
+          :s==='Aguardando'
+            ?'warning'
+            :s==='Justificado'
+              ?'justified'
+              :'neutral';
 
 function Badge({
-  text,
-}: {
-  text: string;
-}) {
+  text
+}:{
+  text:string
+}){
   return (
     <span
       className={
-        'badge ' +
+        'badge '+
         statusClass(text)
       }
     >
-      <i />
+      <i/>
       {text}
     </span>
   );
 }
 
-
 function Panel({
   title,
   extra,
   children,
-  className = '',
-}: any) {
+  className=''
+}:any){
   return (
     <section
       className={
-        'panel ' + className
+        'panel '+
+        className
       }
     >
       <div className="panel-head">
-        <h2>{title}</h2>
+        <h2>
+          {title}
+        </h2>
+
         {extra}
       </div>
 
@@ -148,331 +150,385 @@ function Panel({
   );
 }
 
-
 function Field({
   label,
-  children,
-}: any) {
+  children
+}:any){
   return (
     <label className="field">
-      <span>{label}</span>
+      <span>
+        {label}
+      </span>
+
       {children}
     </label>
   );
 }
 
-
 function Modal({
   title,
   close,
-  children,
-}: any) {
-  const ref =
+  children
+}:any){
+
+  const ref=
     useRef<HTMLDialogElement>(
       null
     );
 
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
+  useEffect(
+    ()=>{
+      ref.current?.showModal();
+    },
+    []
+  );
 
   return (
     <dialog
       ref={ref}
       onCancel={close}
     >
+
       <div className="modal-head">
-        <h2>{title}</h2>
+
+        <h2>
+          {title}
+        </h2>
 
         <button
           className="icon-button"
           onClick={close}
           aria-label="Fechar"
         >
-          <X size={20} />
+          <X size={20}/>
         </button>
+
       </div>
 
       {children}
+
     </dialog>
   );
 }
 
+export default function Tower(){
 
-export default function Tower() {
-
-  const [s, setS] =
-    useState<State | null>(
+  const [
+    s,
+    setS
+  ]=
+    useState<State|null>(
       null
     );
 
-  const [rev, setRev] =
+  const [
+    rev,
+    setRev
+  ]=
     useState(0);
 
-  const [user, setUser] =
+  const [
+    user,
+    setUser
+  ]=
     useState('');
 
-  const [view, setView] =
+  const [
+    view,
+    setView
+  ]=
     useState('HOJE');
 
-  const [date, setDate] =
-    useState('2026-09-29');
+  const [
+    date,
+    setDate
+  ]=
+    useState(
+      '2026-09-29'
+    );
 
-  const [period, setPeriod] =
+  const [
+    period,
+    setPeriod
+  ]=
     useState(2);
 
-  const [now, setNow] =
-    useState(Date.now());
+  const [
+    now,
+    setNow
+  ]=
+    useState(
+      Date.now()
+    );
 
-  const [busy, setBusy] =
+  const [
+    busy,
+    setBusy
+  ]=
     useState(false);
 
-  const [error, setError] =
+  const [
+    error,
+    setError
+  ]=
     useState('');
 
-  const [notice, setNotice] =
+  const [
+    notice,
+    setNotice
+  ]=
     useState('');
 
-  const [modal, setModal] =
-    useState<any>(null);
+  const [
+    modal,
+    setModal
+  ]=
+    useState<any>(
+      null
+    );
 
-  const [q, setQ] =
+  const [
+    q,
+    setQ
+  ]=
     useState('');
 
-  const [type, setType] =
-    useState('Todos');
+  const [
+    type,
+    setType
+  ]=
+    useState(
+      'Todos'
+    );
 
-  const [shipTab, setShipTab] =
-    useState('Todos');
+  const [
+    shipTab,
+    setShipTab
+  ]=
+    useState(
+      'Todos'
+    );
 
-  const [theme, setTheme] =
-    useState('dark');
+  const [
+    theme,
+    setTheme
+  ]=
+    useState(
+      'dark'
+    );
 
   const [
     recordType,
-    setRecordType,
-  ] = useState('CAM');
+    setRecordType
+  ]=
+    useState(
+      'CAM'
+    );
 
   const [
     recordDate,
-    setRecordDate,
-  ] = useState(date);
+    setRecordDate
+  ]=
+    useState(
+      '2026-09-29'
+    );
 
+  const cfg=
+    config(
+      s?.settings
+    );
 
-  const cfg =
-    config(s?.settings);
-
-  const PERIODS =
+  const PERIODS=
     cfg.core;
 
-  const WORK_PERIODS =
+  const WORK_PERIODS=
     cfg.support;
 
-  const ALL_PERIODS =
+  const ALL_PERIODS=
     periodsFor(
       s?.settings
     );
 
-  const split =
+  const split=
     PERIODS.length;
 
-
-  /**
-   * Períodos válidos considerando:
-   * tipo + data.
-   *
-   * Isso é importante principalmente
-   * para CAM e RS.
-   */
-  const typePeriods = (
-    t: string,
-    d = date
-  ) =>
-    typePeriodsForDate(
-      t,
-      d,
-      s?.settings
-    );
-
-
-  const windowOf = (
-    d: string,
-    i: number
-  ) =>
-    defaultWindowOf(
-      d,
-      i,
-      s?.settings
-    );
-
-
-  /**
-   * Tipos que pertencem ao regime de
-   * 6h naquela data.
-   */
-  const coreTypesForDate =
-    TYPES.filter(
-      t =>
-        typePeriods(
-          t,
-          date
-        ).some(p =>
-          PERIODS.includes(p)
-        )
-    );
-
-
-  /**
-   * Tipos que pertencem ao regime de
-   * 12h naquela data.
-   */
-  const supportTypesForDate =
-    TYPES.filter(
-      t =>
-        typePeriods(
-          t,
-          date
-        ).some(p =>
-          WORK_PERIODS.includes(
-            p
-          )
-        )
-    );
-
-
-  useEffect(() => {
-
-    const saved =
-      localStorage.getItem(
-        'dds-theme'
-      ) || 'dark';
-
-    setTheme(saved);
-
-    document.documentElement.dataset.theme =
-      saved;
-
-    setDate(
-      operationalDate()
-    );
-
-    setPeriod(
-      currentPeriod()
-    );
-
-    load();
-
-    const t =
-      setInterval(
-        () =>
-          setNow(
-            Date.now()
-          ),
-        30000
+  const typePeriods=
+    (
+      t:string,
+      d=date
+    )=>
+      typePeriodsForDate(
+        t,
+        d,
+        s?.settings
       );
 
-    return () =>
-      clearInterval(t);
+  const windowOf=
+    (
+      d:string,
+      i:number
+    )=>
+      defaultWindowOf(
+        d,
+        i,
+        s?.settings
+      );
 
-  }, []);
+  useEffect(
+    ()=>{
 
+      const saved=
+        localStorage.getItem(
+          'dds-theme'
+        ) || 'dark';
 
-  async function load() {
+      setTheme(
+        saved
+      );
+
+      document.documentElement.dataset.theme=
+        saved;
+
+      setDate(
+        operationalDate()
+      );
+
+      setPeriod(
+        currentPeriod()
+      );
+
+      load();
+
+      const t=
+        setInterval(
+          ()=>
+            setNow(
+              Date.now()
+            ),
+          30000
+        );
+
+      return ()=>
+        clearInterval(t);
+    },
+    []
+  );
+
+  async function load(){
 
     setBusy(true);
     setError('');
 
-    try {
+    try{
 
-      const d =
+      const d=
         await loadWorkspace();
 
-      setS(d.state);
-      setRev(d.revision);
+      setS(
+        d.state
+      );
+
+      setRev(
+        d.revision
+      );
 
       setUser(
         currentDisplayName()
       );
 
-      const sel =
+      const sel=
         currentSelection(
           d.state.settings,
           'core'
         );
 
-      setDate(sel.date);
-      setPeriod(sel.index);
+      setDate(
+        sel.date
+      );
 
-    } catch (e) {
+      setPeriod(
+        sel.index
+      );
+
+    }catch(e){
 
       setError(
         String(
-          (e as Error).message
+          (
+            e as Error
+          ).message
         )
       );
 
-    } finally {
+    }finally{
 
       setBusy(false);
     }
   }
 
-
   async function save(
-    body: any
-  ) {
+    body:any
+  ){
 
     setBusy(true);
     setError('');
 
-    try {
+    try{
 
-      const d =
+      const d=
         await saveWorkspaceAction(
           body,
           rev,
           user ||
-            currentDisplayName()
+          currentDisplayName()
         );
 
-      setS(d.state);
-      setRev(d.revision);
+      setS(
+        d.state
+      );
 
-      setModal(null);
+      setRev(
+        d.revision
+      );
+
+      setModal(
+        null
+      );
 
       setNotice(
         'Alteração salva. Indicadores recalculados.'
       );
 
       setTimeout(
-        () =>
+        ()=>
           setNotice(''),
         4500
       );
 
-    } catch (e) {
+    }catch(e){
 
       setError(
-        (e as Error).message
+        (
+          e as Error
+        ).message
       );
 
-    } finally {
+    }finally{
 
       setBusy(false);
     }
   }
 
+  function toggleTheme(){
 
-  function toggleTheme() {
-
-    const t =
-      theme === 'dark'
-        ? 'light'
-        : 'dark';
+    const t=
+      theme==='dark'
+        ?'light'
+        :'dark';
 
     setTheme(t);
 
-    document.documentElement.dataset.theme =
+    document.documentElement.dataset.theme=
       t;
 
     localStorage.setItem(
@@ -481,147 +537,122 @@ export default function Tower() {
     );
   }
 
-
   function navigate(
-    v: string
-  ) {
+    v:string
+  ){
     setView(v);
     setQ('');
     setType('Todos');
   }
 
+  function live(){
 
-  function live() {
-
-    const sel =
+    const sel=
       currentSelection(
         s?.settings,
-        period >= split
-          ? 'support'
-          : 'core'
+        period>=split
+          ?'support'
+          :'core'
       );
 
-    setDate(sel.date);
-    setPeriod(sel.index);
-  }
+    setDate(
+      sel.date
+    );
 
-
-  /**
-   * Retorna um tipo válido para o
-   * período/data atualmente selecionados.
-   *
-   * Evita abrir um registro CAM, por
-   * exemplo, em período de 6h de sábado.
-   */
-  function defaultTypeFor(
-    d: string,
-    periodValue: string
-  ) {
-
-    const available =
-      TYPES.filter(
-        t =>
-          cfg.rules[t]
-            .quantity > 0 &&
-          typePeriods(
-            t,
-            d
-          ).includes(
-            periodValue
-          )
-      );
-
-    return (
-      available[0] ||
-      (
-        WORK_PERIODS.includes(
-          periodValue
-        )
-          ? 'GATE'
-          : 'NAVIO'
-      )
+    setPeriod(
+      sel.index
     );
   }
 
-
   function recordForm(
-    item?: Obligation,
-    r?: RecordDDS
-  ) {
+    item?:Obligation,
+    r?:RecordDDS
+  ){
 
-    const recordDateValue =
+    const d=
       r?.date ||
       item?.date ||
       date;
 
-    const recordPeriod =
+    const p=
       r?.period ||
       item?.period ||
       ALL_PERIODS[
         period
       ];
 
-    const selectedType =
-      r?.type ||
-      item?.type ||
-      defaultTypeFor(
-        recordDateValue,
-        recordPeriod
+    const fallback=
+      TYPES.find(
+        t=>
+          cfg.rules[t]
+            .quantity>0 &&
+          typePeriods(
+            t,
+            d
+          ).includes(
+            p
+          )
+      ) ||
+      (
+        WORK_PERIODS.includes(p)
+          ?'GATE'
+          :'NAVIO'
       );
 
+    const selected=
+      r?.type ||
+      item?.type ||
+      fallback;
 
     setRecordDate(
-      recordDateValue
+      d
     );
 
     setRecordType(
-      selectedType
+      selected
     );
 
-
     setModal({
-      kind:
-        'record',
+      kind:'record',
 
       record:
         r || {
-          type:
-            selectedType,
+          type:selected,
 
           ship:
-            item?.type ===
-            'NAVIO'
-              ? item.reference
-              : '',
+            item?.type==='NAVIO'
+              ?item.reference
+              :'',
 
-          date:
-            recordDateValue,
-
-          period:
-            recordPeriod,
+          date:d,
+          period:p,
 
           applied:
-            localNow().slice(
-              0,
-              16
-            ),
+            localNow()
+              .slice(
+                0,
+                16
+              ),
 
-          applicator: '',
-          supervisor: '',
-          participants: '',
-          topics: '',
-          photo: false,
-          signature: false,
-        },
+          applicator:'',
+          supervisor:'',
+          participants:'',
+          topics:'',
+          photo:false,
+          signature:false
+        }
     });
   }
 
+  function exportCSV(){
 
-  function exportCSV() {
+    if(
+      !s
+    ){
+      return;
+    }
 
-    if (!s) return;
-
-    const fields = [
+    const fields=[
       'id',
       'type',
       'ship',
@@ -633,64 +664,62 @@ export default function Tower() {
       'participants',
       'topics',
       'photo',
-      'signature',
+      'signature'
     ];
 
-
-    const csv =
-      '\ufeff' +
+    const csv=
+      '\ufeff'+
       [
         fields,
 
         ...s.records.map(
-          r =>
+          r=>
             fields.map(
-              f =>
+              f=>
                 String(
-                  (r as any)[
-                    f
-                  ] ?? ''
+                  (
+                    r as any
+                  )[f] ?? ''
                 )
             )
-        ),
+        )
       ]
         .map(
-          a =>
+          a=>
             a
               .map(
-                v =>
-                  '"' +
+                v=>
+                  '"'+
                   v.replace(
                     /"/g,
                     '""'
-                  ) +
+                  )+
                   '"'
               )
               .join(';')
         )
         .join('\r\n');
 
-
-    const url =
+    const url=
       URL.createObjectURL(
         new Blob(
           [csv],
           {
             type:
-              'text/csv;charset=utf-8',
+              'text/csv;charset=utf-8'
           }
         )
       );
 
-
-    const a =
+    const a=
       document.createElement(
         'a'
       );
 
-    a.href = url;
+    a.href=
+      url;
 
-    a.download =
+    a.download=
       'DDS-historico.csv';
 
     a.click();
@@ -700,12 +729,13 @@ export default function Tower() {
     );
   }
 
-
-  if (!s) {
+  if(
+    !s
+  ){
     return (
       <div className="loading">
 
-        <Anchor size={42} />
+        <Anchor size={42}/>
 
         <h1>
           DDS Control Tower
@@ -713,11 +743,12 @@ export default function Tower() {
 
         <p>
           {error ||
-            'Carregando os registros…'}
+           'Carregando os registros…'}
         </p>
 
         {error && (
           <>
+
             <button
               onClick={load}
             >
@@ -725,12 +756,13 @@ export default function Tower() {
             </button>
 
             <button
-              onClick={() =>
-                logout()
+              onClick={
+                ()=>logout()
               }
             >
               Sair
             </button>
+
           </>
         )}
 
@@ -738,8 +770,7 @@ export default function Tower() {
     );
   }
 
-
-  const rows =
+  const rows=
     obligations(
       s,
       date,
@@ -747,10 +778,9 @@ export default function Tower() {
       now
     );
 
-
-  const all =
+  const all=
     ALL_PERIODS.flatMap(
-      (_, i) =>
+      (_,i)=>
         obligations(
           s,
           date,
@@ -759,47 +789,51 @@ export default function Tower() {
         )
     );
 
-
-  const stats =
+  const stats=
     score(rows);
 
-  const dayStats =
-    score(all);
-
-
-  const pending =
-    all.filter(x =>
-      [
-        'Atrasado',
-        'Realizado com pendência',
-      ].includes(
-        x.status
-      )
+  const pending=
+    all.filter(
+      x=>
+        [
+          'Atrasado',
+          'Realizado com pendência'
+        ].includes(
+          x.status
+        )
     );
 
-
-  const review =
+  const review=
     s.records.filter(
-      r =>
+      r=>
         !validRecord(
           r,
           s.settings
         )
     );
 
-
-  const unmatched =
+  const legacyTestRecords=
     s.records.filter(
-      r =>
+      r=>
+        /^Excel de teste(?:\s*•|$)/i.test(
+          r.source||''
+        ) ||
+        (
+          r.source||''
+        )==='Registro manual de teste'
+    );
+
+  const unmatched=
+    s.records.filter(
+      r=>
         validRecord(
           r,
           s.settings
         ) &&
-        r.type ===
-          'NAVIO' &&
+        r.type==='NAVIO' &&
         !ALL_PERIODS
           .flatMap(
-            (_, i) =>
+            (_,i)=>
               obligations(
                 s,
                 r.date,
@@ -808,44 +842,25 @@ export default function Tower() {
               )
           )
           .some(
-            o =>
-              o.record?.id ===
-                r.id ||
+            o=>
+              o.record?.id===r.id ||
               (
-                o.type ===
-                  'NAVIO' &&
-                norm(
-                  o.reference
-                ) ===
-                  norm(
-                    r.ship
-                  ) &&
-                o.period ===
-                  r.period
+                o.type==='NAVIO' &&
+                norm(o.reference)===
+                  norm(r.ship) &&
+                o.period===r.period
               )
           )
     );
 
+  const tv=
+    view==='MODO TV';
 
-  const tv =
-    view === 'MODO TV';
-
-
-  /**
-   * ALTERAÇÃO PRINCIPAL DA TELA.
-   *
-   * Antes:
-   * activeTypes dependia apenas do
-   * grupo core/support configurado.
-   *
-   * Agora:
-   * depende do período e da data.
-   */
-  const activeTypes =
+  const activeTypes=
     TYPES.filter(
-      t =>
+      t=>
         cfg.rules[t]
-          .quantity > 0 &&
+          .quantity>0 &&
         typePeriods(
           t,
           date
@@ -856,53 +871,43 @@ export default function Tower() {
         )
     );
 
-
-  const periodIndexes =
+  const periodIndexes=
     ALL_PERIODS
       .map(
-        (_, i) => i
+        (_,i)=>i
       )
       .filter(
-        i =>
-          period >= split
-            ? i >= split
-            : i < split
+        i=>
+          period>=split
+            ?i>=split
+            :i<split
       );
 
-
-  const selectedWindow =
+  const selectedWindow=
     windowOf(
       date,
       period
     );
 
-
-  const visibleShips =
+  const visibleShips=
     s.ships.filter(
-      v =>
+      v=>
         !v.deleted &&
-        v.status !==
-          'Cancelado' &&
-        epoch(v.start) <
+        v.status!=='Cancelado' &&
+        epoch(v.start)<
           selectedWindow.end &&
         epoch(
-          v.actualEnd ||
-            v.end
-        ) >
+          v.actualEnd||v.end
+        )>
           selectedWindow.start
     );
 
+  const shipIndex=
+    period<split
+      ?period
+      :0;
 
-  /**
-   * NAVIO é sempre 6h.
-   */
-  const shipIndex =
-    period < split
-      ? period
-      : 0;
-
-
-  const shipRows =
+  const shipRows=
     obligations(
       s,
       date,
@@ -910,29 +915,27 @@ export default function Tower() {
       now
     );
 
-
-  const visibleRecords =
+  const visibleRecords=
     s.records
       .filter(
-        r =>
+        r=>
           (
-            type ===
-              'Todos' ||
-            r.type === type
+            type==='Todos' ||
+            r.type===type
           ) &&
           norm(
             [
               r.ship,
               r.applicator,
               r.type,
-              r.topics,
+              r.topics
             ].join(' ')
           ).includes(
             norm(q)
           )
       )
       .sort(
-        (a, b) =>
+        (a,b)=>
           b.applied.localeCompare(
             a.applied
           ) ||
@@ -941,217 +944,190 @@ export default function Tower() {
           )
       );
 
+  const shipState=
+    (v:Ship)=>
+      v.status==='Cancelado'
+        ?'Cancelados'
+        :v.status==='Finalizado'
+          ?'Finalizados'
+          :epoch(v.start)>now
+            ?'Programados'
+            :epoch(v.end)<now
+              ?'Fim previsto vencido'
+              :'Em operação';
 
-  const shipState = (
-    v: Ship
-  ) =>
-    v.status ===
-    'Cancelado'
-      ? 'Cancelados'
-      : v.status ===
-          'Finalizado'
-        ? 'Finalizados'
-        : epoch(v.start) >
-            now
-          ? 'Programados'
-          : epoch(v.end) <
-              now
-            ? 'Fim previsto vencido'
-            : 'Em operação';
+  const obligationTable=
+    (
+      list:Obligation[]
+    )=>(
+      <div className="table-wrap">
 
+        <table>
 
-  const obligationTable = (
-    list: Obligation[]
-  ) => (
-    <div className="table-wrap">
+          <thead>
+            <tr>
+              <th>
+                Tipo / referência
+              </th>
+              <th>
+                Período
+              </th>
+              <th>
+                Status
+              </th>
+              <th>
+                Prazo
+              </th>
+              <th>
+                Supervisor
+              </th>
+              <th>
+                Realizado
+              </th>
+              <th/>
+            </tr>
+          </thead>
 
-      <table>
+          <tbody>
 
-        <thead>
-          <tr>
-            <th>
-              Tipo / referência
-            </th>
-
-            <th>Período</th>
-
-            <th>Status</th>
-
-            <th>Prazo</th>
-
-            <th>
-              Supervisor
-            </th>
-
-            <th>Realizado</th>
-
-            <th />
-          </tr>
-        </thead>
-
-
-        <tbody>
-
-          {[...list]
-            .sort(
-              (a, b) =>
-                (
-                  !a.record &&
-                  a.status !==
-                    'Justificado'
-                    ? 0
-                    : 1
-                ) -
+            {[...list]
+              .sort(
+                (a,b)=>
+                  (
+                    !a.record &&
+                    a.status!=='Justificado'
+                      ?0
+                      :1
+                  ) -
                   (
                     !b.record &&
-                    b.status !==
-                      'Justificado'
-                      ? 0
-                      : 1
+                    b.status!=='Justificado'
+                      ?0
+                      :1
                   ) ||
-                a.due -
-                  b.due
-            )
-            .map(r => (
-
-              <tr
-                key={r.key}
-                className={
-                  !r.record &&
-                  r.status !==
-                    'Justificado'
-                    ? (
-                        r.status ===
-                        'Atrasado'
-                          ? 'dds-not-done overdue'
-                          : 'dds-not-done'
-                      )
-                    : ''
-                }
-              >
-
-                <td>
-                  <strong>
-                    {r.reference}
-                  </strong>
-
-                  <small>
-                    {r.type}
-
-                    {r.quantity >
-                    1
-                      ? ` • DDS ${r.slot} de ${r.quantity}`
-                      : r.count >
-                          1
-                        ? ` • ${r.count} respostas, 1 obrigação`
-                        : ''}
-                  </small>
-                </td>
-
-
-                <td>
-                  {r.period}
-                </td>
-
-
-                <td>
-
-                  <Badge
-                    text={
-                      r.status
-                    }
-                  />
-
-                  {!r.record &&
-                    r.status !==
-                      'Justificado' && (
-                      <small className="not-done-label">
-                        DDS ainda não realizado
-                      </small>
-                    )}
-
-                  {r.record &&
-                    epoch(
-                      r.record
-                        .applied
-                    ) >
-                      r.due && (
-                      <small>
-                        Aplicado após o prazo
-                      </small>
-                    )}
-
-                </td>
-
-
-                <td>
-                  {fmtTime(
-                    r.due
-                  )}
-                </td>
-
-
-                <td>
-                  {r.record
-                    ?.supervisor ||
-                    '—'}
-                </td>
-
-
-                <td>
-                  {r.record
-                    ? fmtTime(
-                        r.record
-                          .applied
-                      )
-                    : '—'}
-                </td>
-
-
-                <td>
-                  <button
-                    className="subtle"
-                    onClick={() =>
-                      setModal({
-                        kind:
-                          'obligation',
-                        item: r,
-                      })
+                  a.due-b.due
+              )
+              .map(
+                r=>(
+                  <tr
+                    key={r.key}
+                    className={
+                      !r.record &&
+                      r.status!=='Justificado'
+                        ?
+                          r.status==='Atrasado'
+                            ?'dds-not-done overdue'
+                            :'dds-not-done'
+                        :''
                     }
                   >
-                    Detalhes
 
-                    <ChevronRight
-                      size={15}
-                    />
-                  </button>
-                </td>
+                    <td>
+                      <strong>
+                        {r.reference}
+                      </strong>
 
-              </tr>
-            ))}
+                      <small>
+                        {r.type}
 
-        </tbody>
+                        {r.quantity>1
+                          ?` • DDS ${r.slot} de ${r.quantity}`
+                          :r.count>1
+                            ?` • ${r.count} respostas, 1 obrigação`
+                            :''}
+                      </small>
+                    </td>
 
-      </table>
+                    <td>
+                      {r.period}
+                    </td>
 
+                    <td>
 
-      {!list.length && (
-        <div className="empty">
+                      <Badge
+                        text={
+                          r.status
+                        }
+                      />
 
-          <Check />
+                      {!r.record &&
+                       r.status!=='Justificado' && (
+                        <small className="not-done-label">
+                          DDS ainda não realizado
+                        </small>
+                      )}
 
-          <p>
-            Nenhum item nesta seleção.
-          </p>
+                      {r.record &&
+                       epoch(
+                         r.record.applied
+                       )>r.due && (
+                        <small>
+                          Aplicado após o prazo
+                        </small>
+                      )}
 
-        </div>
-      )}
+                    </td>
 
-    </div>
-  );
+                    <td>
+                      {fmtTime(
+                        r.due
+                      )}
+                    </td>
 
+                    <td>
+                      {r.record?.supervisor || '—'}
+                    </td>
 
-  const timeline = (
+                    <td>
+                      {r.record
+                        ?fmtTime(
+                           r.record.applied
+                         )
+                        :'—'}
+                    </td>
+
+                    <td>
+
+                      <button
+                        className="subtle"
+                        onClick={
+                          ()=>
+                            setModal({
+                              kind:'obligation',
+                              item:r
+                            })
+                        }
+                      >
+                        Detalhes
+
+                        <ChevronRight
+                          size={15}
+                        />
+                      </button>
+
+                    </td>
+
+                  </tr>
+                )
+              )}
+
+          </tbody>
+
+        </table>
+
+        {!list.length && (
+          <div className="empty">
+            <Check/>
+            <p>
+              Nenhum item nesta seleção.
+            </p>
+          </div>
+        )}
+
+      </div>
+    );
+
+  const timeline=(
     <>
 
       <div
@@ -1161,58 +1137,78 @@ export default function Tower() {
 
         <button
           className={
-            period < split
-              ? 'selected'
-              : ''
+            period<split
+              ?'selected'
+              :''
           }
-          onClick={() =>
-            setPeriod(0)
+          onClick={
+            ()=>setPeriod(0)
           }
         >
-          {coreTypesForDate.join(
-            ' · '
-          ) ||
-            'Períodos de 6h'}
+          {TYPES
+            .filter(
+              t=>
+                cfg.rules[t]
+                  .quantity>0 &&
+                typePeriods(
+                  t,
+                  date
+                ).some(
+                  p=>
+                    PERIODS.includes(p)
+                )
+            )
+            .join(' · ') ||
+           'Períodos de 6h'}
         </button>
-
 
         <button
           className={
-            period >= split
-              ? 'selected'
-              : ''
+            period>=split
+              ?'selected'
+              :''
           }
-          onClick={() =>
-            setPeriod(split)
+          onClick={
+            ()=>setPeriod(split)
           }
         >
-          {supportTypesForDate.join(
-            ' · '
-          ) ||
-            'Períodos de 12h'}
+          {TYPES
+            .filter(
+              t=>
+                cfg.rules[t]
+                  .quantity>0 &&
+                typePeriods(
+                  t,
+                  date
+                ).some(
+                  p=>
+                    WORK_PERIODS.includes(p)
+                )
+            )
+            .join(' · ') ||
+           'Períodos de 12h'}
         </button>
 
       </div>
 
-
       <div
         className={
-          'periods ' +
+          'periods '+
           (
-            period >= split
-              ? 'two-periods'
-              : ''
+            period>=split
+              ?'two-periods'
+              :''
           )
         }
       >
 
         {periodIndexes.map(
-          i => {
+          i=>{
 
-            const p =
+            const p=
               ALL_PERIODS[i];
 
-            const a =
+            const a=
               obligations(
                 s,
                 date,
@@ -1220,58 +1216,49 @@ export default function Tower() {
                 now
               );
 
-            const k =
+            const k=
               score(a);
-
 
             return (
               <button
                 key={p}
                 className={
-                  period === i
-                    ? 'selected'
-                    : ''
+                  period===i
+                    ?'selected'
+                    :''
                 }
-                onClick={() =>
-                  setPeriod(i)
+                onClick={
+                  ()=>setPeriod(i)
                 }
               >
 
                 <div>
-
                   <strong>
                     {p}
                   </strong>
 
-                  {period === i && (
+                  {period===i && (
                     <span>
                       Selecionado
                     </span>
                   )}
-
                 </div>
 
-
                 <div className="period-value">
-
                   {k.pct}%
 
                   {' '}
 
                   <small>
-                    {k.done}/
-                    {k.total} DDS
+                    {k.done}/{k.total} DDS
                   </small>
-
                 </div>
-
 
                 <div className="track">
                   <i
                     style={{
                       width:
-                        k.pct +
-                        '%',
+                        k.pct+'%'
                     }}
                   />
                 </div>
@@ -1286,8 +1273,7 @@ export default function Tower() {
     </>
   );
 
-
-  const cards = (
+  const cards=(
     <div className="kpis">
 
       <div className="kpi lead">
@@ -1302,112 +1288,89 @@ export default function Tower() {
         </strong>
 
         <p>
-          {stats.done} de{' '}
-          {stats.total} DDS
-          realizados
+          {stats.done} de {stats.total} DDS realizados
         </p>
 
         <div className="track">
           <i
             style={{
               width:
-                stats.pct +
-                '%',
+                stats.pct+'%'
             }}
           />
         </div>
 
       </div>
 
+      {activeTypes.map(
+        t=>{
 
-      {activeTypes.map(t => {
+          const k=
+            score(
+              rows.filter(
+                r=>
+                  r.type===t
+              )
+            );
 
-        const k =
-          score(
-            rows.filter(
-              r =>
-                r.type === t
-            )
-          );
+          const Icon=
+            (
+              {
+                NAVIO:ShipIcon,
+                CAM:Truck,
+                RS:Users,
+                GATE:DoorOpen,
+                REEFER:Snowflake,
+                ARMAZÉM:Warehouse
+              } as any
+            )[t];
 
+          return (
+            <div
+              className="kpi"
+              key={t}
+            >
 
-        const Icon =
-          (
-            {
-              NAVIO:
-                ShipIcon,
+              <div className="kpi-label">
+                <span>
+                  {t}
+                </span>
 
-              CAM:
-                Truck,
+                <Icon size={22}/>
+              </div>
 
-              RS:
-                Users,
+              <strong>
+                {k.done}
+                <em>
+                  {' / '}
+                  {k.total}
+                </em>
+              </strong>
 
-              GATE:
-                DoorOpen,
-
-              REEFER:
-                Snowflake,
-
-              ARMAZÉM:
-                Warehouse,
-            } as any
-          )[t];
-
-
-        return (
-          <div
-            className="kpi"
-            key={t}
-          >
-
-            <div className="kpi-label">
-
-              <span>
-                {t}
-              </span>
-
-              <Icon
-                size={22}
-              />
+              <p>
+                {k.total
+                  ?'DDS realizados'
+                  :t==='NAVIO'
+                    ?'Nenhum navio previsto'
+                    :'Nenhuma obrigação'}
+              </p>
 
             </div>
-
-
-            <strong>
-              {k.done}
-              <em>
-                {' '}
-                / {k.total}
-              </em>
-            </strong>
-
-
-            <p>
-              {k.total
-                ? 'DDS realizados'
-                : t ===
-                    'NAVIO'
-                  ? 'Nenhum navio previsto'
-                  : 'Nenhuma obrigação'}
-            </p>
-
-          </div>
-        );
-      })}
+          );
+        }
+      )}
 
     </div>
   );
 
-
   return (
     <div
       className={
-        'shell ' +
+        'shell '+
         (
           tv
-            ? 'tv'
-            : ''
+            ?'tv'
+            :''
         )
       }
     >
@@ -1416,56 +1379,47 @@ export default function Tower() {
         <aside className="sidebar">
 
           <div className="brand">
-            <Anchor
-              size={29}
-            />
+            <Anchor size={29}/>
 
             <div>
               DDS
+
               <span>
                 CONTROL TOWER
               </span>
             </div>
           </div>
 
-
           <div className="workspace-label">
             OPERAÇÃO • PARMA
           </div>
 
-
           <nav>
 
             {menus.map(
-              ([m, Icon]) => (
+              ([m,Icon])=>(
                 <button
                   key={m}
-                  onClick={() =>
-                    navigate(m)
+                  onClick={
+                    ()=>navigate(m)
                   }
                   className={
-                    view === m
-                      ? 'active'
-                      : ''
+                    view===m
+                      ?'active'
+                      :''
                   }
                 >
 
-                  <Icon
-                    size={19}
-                  />
+                  <Icon size={19}/>
 
                   {m}
 
-                  {m ===
-                    'PENDÊNCIAS' &&
-                    pending.length >
-                      0 && (
-                      <b>
-                        {
-                          pending.length
-                        }
-                      </b>
-                    )}
+                  {m==='PENDÊNCIAS' &&
+                   pending.length>0 && (
+                    <b>
+                      {pending.length}
+                    </b>
+                  )}
 
                 </button>
               )
@@ -1473,38 +1427,29 @@ export default function Tower() {
 
           </nav>
 
-
           <button
             className="tv-link"
-            onClick={() =>
-              navigate(
-                'MODO TV'
-              )
+            onClick={
+              ()=>
+                navigate(
+                  'MODO TV'
+                )
             }
           >
-            <Monitor
-              size={19}
-            />
-
+            <Monitor size={19}/>
             DASHBOARD DO DIA
           </button>
-
 
           <div className="profile">
 
             <div className="avatar">
-              {user.slice(
-                0,
-                1
-              ) || 'D'}
+              {user.slice(0,1)||'D'}
             </div>
-
 
             <div>
 
               <strong>
-                {user ||
-                  'Operador'}
+                {user||'Operador'}
               </strong>
 
               <small>
@@ -1513,8 +1458,8 @@ export default function Tower() {
 
               <button
                 className="profile-logout"
-                onClick={() =>
-                  logout()
+                onClick={
+                  ()=>logout()
                 }
               >
                 Sair
@@ -1527,7 +1472,6 @@ export default function Tower() {
         </aside>
       )}
 
-
       <main>
 
         <header className="top">
@@ -1536,14 +1480,10 @@ export default function Tower() {
             DDS Control Tower
             <span>/</span>
             {tv
-              ? 'Dashboard do dia'
-              : view
-                  .charAt(0) +
-                view
-                  .slice(1)
-                  .toLowerCase()}
+              ?'Dashboard do dia'
+              :view.charAt(0)+
+               view.slice(1).toLowerCase()}
           </div>
-
 
           <div className="top-right">
 
@@ -1553,49 +1493,31 @@ export default function Tower() {
                 toggleTheme
               }
               aria-label={
-                theme ===
-                'dark'
-                  ? 'Ativar modo claro'
-                  : 'Ativar modo escuro'
+                theme==='dark'
+                  ?'Ativar modo claro'
+                  :'Ativar modo escuro'
               }
             >
 
-              {theme ===
-              'dark'
-                ? (
-                  <Sun
-                    size={17}
-                  />
-                )
-                : (
-                  <Moon
-                    size={17}
-                  />
-                )}
+              {theme==='dark'
+                ?<Sun size={17}/>
+                :<Moon size={17}/>}
 
               <span>
-                {theme ===
-                'dark'
-                  ? 'Modo claro'
-                  : 'Modo escuro'}
+                {theme==='dark'
+                  ?'Modo claro'
+                  :'Modo escuro'}
               </span>
 
             </button>
-
-
-            <span className="test-label">
-              TESTE
-            </span>
-
 
             <span>
               {(s as any)
                 .hashdata
                 ?.lastSuccess
-                ? 'Hashdata sincronizado'
-                : 'Hashdata: configurar importação'}
+                  ?'Hashdata sincronizado'
+                  :'Hashdata: configurar importação'}
             </span>
-
 
             <button
               className="icon-button"
@@ -1607,8 +1529,8 @@ export default function Tower() {
                 size={17}
                 className={
                   busy
-                    ? 'spin'
-                    : ''
+                    ?'spin'
+                    :''
                 }
               />
             </button>
@@ -1617,13 +1539,11 @@ export default function Tower() {
 
         </header>
 
-
         <div className="content">
 
           <HashdataPanel
             settings={
-              view ===
-              'CONFIGURAÇÕES'
+              view==='CONFIGURAÇÕES'
             }
             info={
               (s as any)
@@ -1635,16 +1555,13 @@ export default function Tower() {
             }
             revision={rev}
             user={user}
-            onChange={d => {
-              setS(
-                d.state
-              );
-              setRev(
-                d.revision
-              );
-            }}
+            onChange={
+              d=>{
+                setS(d.state);
+                setRev(d.revision);
+              }
+            }
           />
-
 
           <div className="heading">
 
@@ -1654,51 +1571,36 @@ export default function Tower() {
                 CONTROLE DE ADERÊNCIA OPERACIONAL
               </div>
 
-
               <h1>
                 {
                   (
                     {
-                      HOJE:
-                        'Visão da operação',
-
-                      NAVIOS:
-                        'Programação de navios',
-
-                      PENDÊNCIAS:
-                        'Pendências',
-
-                      HISTÓRICO:
-                        'Histórico de DDS',
-
-                      ADERÊNCIA:
-                        'Aderência operacional',
-
-                      CONFIGURAÇÕES:
-                        'Configurações',
-
-                      'MODO TV':
-                        'Dashboard do dia',
+                      HOJE:'Visão da operação',
+                      NAVIOS:'Programação de navios',
+                      PENDÊNCIAS:'Pendências',
+                      HISTÓRICO:'Histórico de DDS',
+                      ADERÊNCIA:'Aderência operacional',
+                      CONFIGURAÇÕES:'Configurações',
+                      'MODO TV':'Dashboard do dia'
                     } as any
                   )[view]
                 }
               </h1>
 
-
               <p>
                 {tv
-                  ? 'Visão consolidada • ' +
-                    fmtDate(
-                      date
-                    )
-                  : 'Dados de teste • Última alteração ' +
+                  ?
+                    'Visão consolidada • '+
+                    fmtDate(date)
+                  :
+                    'Última alteração '+
                     fmtDate(
                       s.updated.slice(
                         0,
                         10
                       )
-                    ) +
-                    ' às ' +
+                    )+
+                    ' às '+
                     s.updated.slice(
                       11,
                       16
@@ -1707,144 +1609,99 @@ export default function Tower() {
 
             </div>
 
-
             <div className="heading-actions">
 
               {tv
-                ? (
+                ?
                   <>
-
                     <strong className="tv-clock">
-                      {fmtTime(
-                        now
-                      )}
+                      {fmtTime(now)}
                     </strong>
 
                     <button
-                      onClick={() =>
-                        navigate(
-                          'HOJE'
-                        )
+                      onClick={
+                        ()=>
+                          navigate(
+                            'HOJE'
+                          )
                       }
                     >
                       Voltar à operação
                     </button>
-
                   </>
-                )
-                : (
+                :
                   <>
 
                     <input
                       aria-label="Data operacional"
                       type="date"
                       value={date}
-                      onChange={e =>
-                        e.target
-                          .value &&
-                        setDate(
-                          e.target
-                            .value
-                        )
+                      onChange={
+                        e=>
+                          e.target.value &&
+                          setDate(
+                            e.target.value
+                          )
                       }
                     />
 
-
                     <button
-                      onClick={
-                        live
-                      }
+                      onClick={live}
                     >
                       Agora
                     </button>
 
-
-                    {view ===
-                    'NAVIOS'
-                      ? (
+                    {view==='NAVIOS'
+                      ?
                         <>
 
                           <button
-                            onClick={() =>
-                              setModal({
-                                kind:
-                                  'import',
-                              })
+                            onClick={
+                              ()=>
+                                setModal({
+                                  kind:'import'
+                                })
                             }
                           >
-                            <Upload
-                              size={
-                                17
-                              }
-                            />
-
+                            <Upload size={17}/>
                             Importar arquivo de e-mail
                           </button>
 
-
                           <button
                             className="primary"
-                            onClick={() =>
-                              setModal({
-                                kind:
-                                  'ship',
-                              })
+                            onClick={
+                              ()=>
+                                setModal({
+                                  kind:'ship'
+                                })
                             }
                           >
-                            <Plus
-                              size={
-                                17
-                              }
-                            />
-
+                            <Plus size={17}/>
                             Novo navio
                           </button>
 
                         </>
-                      )
-                      : view ===
-                          'HISTÓRICO'
-                        ? (
-                          <>
-
+                      :
+                        view==='HISTÓRICO'
+                          ?
                             <button
                               className="primary"
-                              onClick={() =>
-                                recordForm()
+                              onClick={
+                                ()=>recordForm()
                               }
                             >
-                              <Plus
-                                size={
-                                  17
-                                }
-                              />
-
-                              Registrar teste
+                              <Plus size={17}/>
+                              Registrar DDS
                             </button>
-
-
-                            <button
-                              onClick={() =>
-                                setModal({
-                                  kind:
-                                    'hashdata-import',
-                                })
-                              }
-                            >
-                              Importar Excel Hashdata
-                            </button>
-
-                          </>
-                        )
-                        : null}
+                          :
+                            null}
 
                   </>
-                )}
+              }
 
             </div>
 
           </div>
-
 
           {error && (
             <div
@@ -1854,18 +1711,15 @@ export default function Tower() {
               {error}
 
               <button
-                onClick={() =>
-                  setError('')
+                onClick={
+                  ()=>setError('')
                 }
                 aria-label="Dispensar erro"
               >
-                <X
-                  size={16}
-                />
+                <X size={16}/>
               </button>
             </div>
           )}
-
 
           {notice && (
             <div
@@ -1876,36 +1730,26 @@ export default function Tower() {
             </div>
           )}
 
-
-          {view ===
-            'HOJE' && (
+          {view==='HOJE' && (
             <>
 
               {timeline}
 
               {cards}
 
-
               <Panel
                 title="DDS do período"
                 extra={
                   <span className="meta">
-                    {
-                      ALL_PERIODS[
-                        period
-                      ]
-                    }
+                    {ALL_PERIODS[period]}
                     {' • '}
-                    {fmtDate(
-                      date
-                    )}
+                    {fmtDate(date)}
                     {' · '}
                     {
                       rows.filter(
-                        r =>
+                        r=>
                           !r.record &&
-                          r.status !==
-                            'Justificado'
+                          r.status!=='Justificado'
                       ).length
                     }
                     {' '}
@@ -1913,43 +1757,22 @@ export default function Tower() {
                   </span>
                 }
               >
-                {obligationTable(
-                  rows
-                )}
+                {obligationTable(rows)}
               </Panel>
 
-
-              {period <
-                split && (
+              {period<split && (
                 <details className="ships-disclosure">
 
                   <summary>
-                    Navios no período
-                    {' · '}
-                    {
-                      visibleShips.length
-                    }
-                    {' '}
-                    operações
+                    Navios no período · {visibleShips.length} operações
                   </summary>
-
 
                   <Panel
                     title="Navios no período"
                     className="ships-expanded"
                     extra={
                       <span className="meta">
-                        {
-                          visibleShips.length
-                        }
-                        {' '}
-                        operações
-                        {' · '}
-                        {
-                          ALL_PERIODS[
-                            period
-                          ]
-                        }
+                        {visibleShips.length} operações · {ALL_PERIODS[period]}
                       </span>
                     }
                   >
@@ -1957,76 +1780,60 @@ export default function Tower() {
                     <div className="vessel-grid">
 
                       {visibleShips.map(
-                        v => {
+                        v=>{
 
-                          const related =
+                          const related=
                             all.filter(
-                              r =>
-                                r.type ===
-                                  'NAVIO' &&
-                                r.entityId ===
-                                  v.id &&
+                              r=>
+                                r.type==='NAVIO' &&
+                                r.entityId===v.id &&
                                 (
-                                  r.start <
-                                    selectedWindow.end &&
+                                  r.start<
+                                  selectedWindow.end &&
                                   windowOf(
                                     date,
                                     ALL_PERIODS.indexOf(
                                       r.period
                                     )
-                                  ).end >
-                                    selectedWindow.start
+                                  ).end>
+                                  selectedWindow.start
                                 )
                             );
-
 
                           return (
                             <article
                               className="vessel-card"
-                              key={
-                                v.id
-                              }
+                              key={v.id}
                             >
 
                               <div className="vessel-title">
 
-                                <ShipIcon
-                                  size={
-                                    24
-                                  }
-                                />
+                                <ShipIcon size={24}/>
 
                                 <div>
                                   <h3>
-                                    {
-                                      v.name
-                                    }
+                                    {v.name}
                                   </h3>
 
                                   <small>
-                                    Berço{' '}
-                                    {
-                                      v.berth
-                                    }
+                                    Berço {v.berth}
                                   </small>
                                 </div>
 
                                 <button
                                   className="subtle"
-                                  onClick={() =>
-                                    setModal({
-                                      kind:
-                                        'ship',
-                                      ship:
-                                        v,
-                                    })
+                                  onClick={
+                                    ()=>
+                                      setModal({
+                                        kind:'ship',
+                                        ship:v
+                                      })
                                   }
                                 >
                                   Gerenciar
                                 </button>
 
                               </div>
-
 
                               <dl>
 
@@ -2048,11 +1855,10 @@ export default function Tower() {
                                   )}
                                 </dd>
 
-
                                 <dt>
                                   {v.actualEnd
-                                    ? 'Saída real'
-                                    : 'Fim previsto'}
+                                    ?'Saída real'
+                                    :'Fim previsto'}
                                 </dt>
 
                                 <dd>
@@ -2066,64 +1872,49 @@ export default function Tower() {
                                     )
                                   )}
                                   {' · '}
-                                  {(
-                                    v.actualEnd ||
-                                    v.end
-                                  ).slice(
-                                    11,
-                                    16
-                                  )}
+                                  {
+                                    (
+                                      v.actualEnd ||
+                                      v.end
+                                    ).slice(
+                                      11,
+                                      16
+                                    )
+                                  }
                                 </dd>
 
                               </dl>
 
-
                               <div className="vessel-status">
 
                                 {related.map(
-                                  r => (
+                                  r=>(
                                     <button
-                                      key={
-                                        r.key
-                                      }
+                                      key={r.key}
                                       className="subtle"
-                                      onClick={() =>
-                                        setModal({
-                                          kind:
-                                            'obligation',
-                                          item:
-                                            r,
-                                        })
+                                      onClick={
+                                        ()=>
+                                          setModal({
+                                            kind:'obligation',
+                                            item:r
+                                          })
                                       }
                                     >
 
-                                      {period >=
-                                        split && (
+                                      {period>=split && (
                                         <span>
-                                          {
-                                            r.period
-                                          }
+                                          {r.period}
                                         </span>
                                       )}
 
-                                      {r.quantity >
-                                        1 && (
+                                      {r.quantity>1 && (
                                         <span>
-                                          DDS{' '}
-                                          {
-                                            r.slot
-                                          }
-                                          /
-                                          {
-                                            r.quantity
-                                          }
+                                          DDS {r.slot}/{r.quantity}
                                         </span>
                                       )}
 
                                       <Badge
-                                        text={
-                                          r.status
-                                        }
+                                        text={r.status}
                                       />
 
                                     </button>
@@ -2132,19 +1923,13 @@ export default function Tower() {
 
                               </div>
 
-
                               {v.startBasis && (
                                 <small>
-                                  Início:{' '}
-                                  {
-                                    v.startBasis
-                                  }
+                                  Início: {v.startBasis}
                                 </small>
                               )}
 
-
-                              {!!v.review
-                                ?.length && (
+                              {!!v.review?.length && (
                                 <small className="review-flag">
                                   Programação estimada · conferir observações
                                 </small>
@@ -2157,21 +1942,21 @@ export default function Tower() {
 
                     </div>
 
-
                     {!visibleShips.length && (
                       <div className="empty">
 
-                        <ShipIcon />
+                        <ShipIcon/>
 
                         <p>
                           Nenhum navio cadastrado para este período.
                         </p>
 
                         <button
-                          onClick={() =>
-                            navigate(
-                              'NAVIOS'
-                            )
+                          onClick={
+                            ()=>
+                              navigate(
+                                'NAVIOS'
+                              )
                           }
                         >
                           Ver programação e importar
@@ -2185,43 +1970,29 @@ export default function Tower() {
                 </details>
               )}
 
-
               {!tv &&
-                (
-                  review.length >
-                    0 ||
-                  unmatched.length >
-                    0
-                ) && (
+               (
+                 review.length>0 ||
+                 unmatched.length>0
+               ) && (
                 <div className="review-note">
 
-                  <FileCheck2
-                    size={20}
-                  />
+                  <FileCheck2 size={20}/>
 
                   <span>
                     <strong>
-                      {
-                        review.length
-                      }{' '}
-                      registro(s) para revisão
-                      {' · '}
-                      {
-                        unmatched.length
-                      }{' '}
-                      DDS de navio sem vínculo com programação.
+                      {review.length} registro(s) para revisão · {unmatched.length} DDS de navio sem vínculo com programação.
                     </strong>
-
                     {' '}
                     Confira o histórico e cadastre as janelas em NAVIOS.
                   </span>
 
-
                   <button
-                    onClick={() =>
-                      navigate(
-                        'HISTÓRICO'
-                      )
+                    onClick={
+                      ()=>
+                        navigate(
+                          'HISTÓRICO'
+                        )
                     }
                   >
                     Revisar
@@ -2233,9 +2004,7 @@ export default function Tower() {
             </>
           )}
 
-
-          {view ===
-            'NAVIOS' && (
+          {view==='NAVIOS' && (
             <>
 
               <div className="tabs">
@@ -2246,39 +2015,32 @@ export default function Tower() {
                   'Programados',
                   'Finalizados',
                   'Cancelados',
-                  'Fim previsto vencido',
-                ].map(t => (
-                  <button
-                    className={
-                      shipTab ===
-                      t
-                        ? 'selected'
-                        : ''
-                    }
-                    key={t}
-                    onClick={() =>
-                      setShipTab(
-                        t
-                      )
-                    }
-                  >
-                    {t}
-                  </button>
-                ))}
+                  'Fim previsto vencido'
+                ].map(
+                  t=>(
+                    <button
+                      className={
+                        shipTab===t
+                          ?'selected'
+                          :''
+                      }
+                      key={t}
+                      onClick={
+                        ()=>setShipTab(t)
+                      }
+                    >
+                      {t}
+                    </button>
+                  )
+                )}
 
               </div>
-
 
               <Panel
                 title="Gestão manual da operação"
                 extra={
                   <span className="meta">
-                    DDS atual:{' '}
-                    {
-                      ALL_PERIODS[
-                        shipIndex
-                      ]
-                    }
+                    DDS atual: {ALL_PERIODS[shipIndex]}
                   </span>
                 }
               >
@@ -2310,243 +2072,204 @@ export default function Tower() {
                       </tr>
                     </thead>
 
-
                     <tbody>
 
                       {s.ships
                         .filter(
-                          v =>
+                          v=>
                             !v.deleted &&
                             (
-                              shipTab ===
-                                'Todos' ||
-                              shipState(
-                                v
-                              ) ===
-                                shipTab
+                              shipTab==='Todos' ||
+                              shipState(v)===shipTab
                             )
                         )
-                        .map(v => (
+                        .map(
+                          v=>(
+                            <tr key={v.id}>
 
-                          <tr
-                            key={
-                              v.id
-                            }
-                          >
+                              <td>
 
-                            <td>
-                              <strong>
-                                {
-                                  v.name
-                                }
-                              </strong>
+                                <strong>
+                                  {v.name}
+                                </strong>
 
-                              <small>
-                                Berço{' '}
-                                {
-                                  v.berth
-                                }
-                              </small>
-
-                              {v.source && (
                                 <small>
-                                  Importado dos e-mails
+                                  Berço {v.berth}
                                 </small>
-                              )}
 
-                              {!!v.review
-                                ?.length && (
-                                <small className="review-flag">
-                                  Conferir estimativas
+                                {v.source && (
+                                  <small>
+                                    Importado dos e-mails
+                                  </small>
+                                )}
+
+                                {!!v.review?.length && (
+                                  <small className="review-flag">
+                                    Conferir estimativas
+                                  </small>
+                                )}
+
+                              </td>
+
+                              <td>
+
+                                {fmtDate(
+                                  v.start.slice(
+                                    0,
+                                    10
+                                  )
+                                )}
+
+                                <small>
+                                  {v.start.slice(
+                                    11,
+                                    16
+                                  )}
                                 </small>
-                              )}
-                            </td>
 
+                              </td>
 
-                            <td>
-                              {fmtDate(
-                                v.start.slice(
-                                  0,
-                                  10
-                                )
-                              )}
+                              <td>
 
-                              <small>
-                                {v.start.slice(
-                                  11,
-                                  16
-                                )}
-                              </small>
-                            </td>
-
-
-                            <td>
-                              {fmtDate(
-                                (
-                                  v.actualEnd ||
-                                  v.end
-                                ).slice(
-                                  0,
-                                  10
-                                )
-                              )}
-
-                              <small>
-                                {(
-                                  v.actualEnd ||
-                                  v.end
-                                ).slice(
-                                  11,
-                                  16
+                                {fmtDate(
+                                  (
+                                    v.actualEnd ||
+                                    v.end
+                                  ).slice(
+                                    0,
+                                    10
+                                  )
                                 )}
 
-                                {' '}
+                                <small>
+                                  {
+                                    (
+                                      v.actualEnd ||
+                                      v.end
+                                    ).slice(
+                                      11,
+                                      16
+                                    )
+                                  }
 
-                                {v.actualEnd
-                                  ? '• saída real'
-                                  : ''}
-                              </small>
-                            </td>
+                                  {' '}
 
+                                  {v.actualEnd
+                                    ?'• saída real'
+                                    :''}
+                                </small>
 
-                            <td>
-                              {shipState(
-                                v
-                              )}
-                            </td>
+                              </td>
 
+                              <td>
+                                {shipState(v)}
+                              </td>
 
-                            <td>
+                              <td>
 
-                              {shipRows.find(
-                                r =>
-                                  r.entityId ===
-                                  v.id
-                              )
-                                ? (
-                                  <>
-
-                                    <Badge
-                                      text={
-                                        shipRows.find(
-                                          r =>
-                                            r.entityId ===
-                                              v.id &&
-                                            !r.record
-                                        )
-                                          ?.status ||
-                                        shipRows.find(
-                                          r =>
-                                            r.entityId ===
-                                            v.id
-                                        )!
-                                          .status
-                                      }
-                                    />
-
-                                    <small>
-                                      {
-                                        score(
-                                          shipRows.filter(
-                                            r =>
-                                              r.entityId ===
-                                              v.id
-                                          )
-                                        ).done
-                                      }
-                                      {' / '}
-                                      {
-                                        score(
-                                          shipRows.filter(
-                                            r =>
-                                              r.entityId ===
-                                              v.id
-                                          )
-                                        ).total
-                                      }
-                                      {' '}
-                                      DDS
-                                    </small>
-
-                                  </>
+                                {shipRows.find(
+                                  r=>
+                                    r.entityId===v.id
                                 )
-                                : (
-                                  <span className="meta">
-                                    Não esperado
-                                  </span>
-                                )}
+                                  ?
+                                    <>
 
-                            </td>
+                                      <Badge
+                                        text={
+                                          shipRows.find(
+                                            r=>
+                                              r.entityId===v.id &&
+                                              !r.record
+                                          )?.status ||
+                                          shipRows.find(
+                                            r=>
+                                              r.entityId===v.id
+                                          )!.status
+                                        }
+                                      />
 
+                                      <small>
+                                        {
+                                          score(
+                                            shipRows.filter(
+                                              r=>
+                                                r.entityId===v.id
+                                            )
+                                          ).done
+                                        }
+                                        {' / '}
+                                        {
+                                          score(
+                                            shipRows.filter(
+                                              r=>
+                                                r.entityId===v.id
+                                            )
+                                          ).total
+                                        }
+                                        {' '}
+                                        DDS
+                                      </small>
 
-                            <td>
-                              <button
-                                onClick={() =>
-                                  setModal({
-                                    kind:
-                                      'ship',
-                                    ship:
-                                      v,
-                                  })
-                                }
-                              >
-                                Gerenciar
-                              </button>
-                            </td>
+                                    </>
+                                  :
+                                    <span className="meta">
+                                      Não esperado
+                                    </span>}
 
-                          </tr>
-                        ))}
+                              </td>
+
+                              <td>
+                                <button
+                                  onClick={
+                                    ()=>
+                                      setModal({
+                                        kind:'ship',
+                                        ship:v
+                                      })
+                                  }
+                                >
+                                  Gerenciar
+                                </button>
+                              </td>
+
+                            </tr>
+                          )
+                        )}
 
                     </tbody>
 
                   </table>
 
-
                   {!s.ships.some(
-                    v =>
+                    v=>
                       !v.deleted &&
                       (
-                        shipTab ===
-                          'Todos' ||
-                        shipState(
-                          v
-                        ) ===
-                          shipTab
+                        shipTab==='Todos' ||
+                        shipState(v)===shipTab
                       )
                   ) && (
                     <div className="empty">
 
-                      <ShipIcon
-                        size={
-                          32
-                        }
-                      />
+                      <ShipIcon size={32}/>
 
                       <h3>
                         Nenhum navio nesta seleção
                       </h3>
 
                       <p>
-                        Comece cadastrando MSC teste com os horários da sua simulação.
+                        Cadastre manualmente ou importe a programação de navios.
                       </p>
 
                       <button
                         className="primary"
-                        onClick={() =>
-                          setModal({
-                            kind:
-                              'ship',
-                            name:
-                              'MSC teste',
-                          })
+                        onClick={
+                          ()=>
+                            setModal({
+                              kind:'ship'
+                            })
                         }
                       >
-                        <Plus
-                          size={
-                            17
-                          }
-                        />
-
+                        <Plus size={17}/>
                         Novo navio
                       </button>
 
@@ -2557,41 +2280,35 @@ export default function Tower() {
 
               </Panel>
 
-
               <Panel title="Histórico de alterações">
 
                 {s.audit
-                  .filter(a =>
-                    [
-                      'ship',
-                      'finish',
-                      'cancel',
-                      'delete',
-                      'import-emails',
-                      'import-files',
-                    ].includes(
-                      a.action
-                    )
+                  .filter(
+                    a=>
+                      [
+                        'ship',
+                        'finish',
+                        'cancel',
+                        'delete',
+                        'import-emails',
+                        'import-files'
+                      ].includes(
+                        a.action
+                      )
                   )
                   .map(
-                    (a, i) => (
+                    (a,i)=>(
                       <div
                         className="audit"
                         key={i}
                       >
 
-                        <Clock
-                          size={
-                            16
-                          }
-                        />
+                        <Clock size={16}/>
 
                         <div>
 
                           <strong>
-                            {
-                              a.detail
-                            }
+                            {a.detail}
                           </strong>
 
                           <small>
@@ -2607,9 +2324,7 @@ export default function Tower() {
                               16
                             )}
                             {' · '}
-                            {
-                              a.user
-                            }
+                            {a.user}
                           </small>
 
                         </div>
@@ -2618,16 +2333,15 @@ export default function Tower() {
                     )
                   )}
 
-
                 {!s.audit.some(
-                  a =>
+                  a=>
                     [
                       'ship',
                       'finish',
                       'cancel',
                       'delete',
                       'import-emails',
-                      'import-files',
+                      'import-files'
                     ].includes(
                       a.action
                     )
@@ -2642,32 +2356,26 @@ export default function Tower() {
             </>
           )}
 
-
-          {view ===
-            'PENDÊNCIAS' && (
+          {view==='PENDÊNCIAS' && (
             <>
 
               <div className="summary-strip">
 
                 <div>
                   <strong>
-                    {
-                      pending.length
-                    }
+                    {pending.length}
                   </strong>
                   <span>
                     Pendências do dia
                   </span>
                 </div>
 
-
                 <div>
                   <strong>
                     {
                       pending.filter(
-                        r =>
-                          r.status ===
-                          'Atrasado'
+                        r=>
+                          r.status==='Atrasado'
                       ).length
                     }
                   </strong>
@@ -2676,14 +2384,12 @@ export default function Tower() {
                   </span>
                 </div>
 
-
                 <div>
                   <strong>
                     {
                       pending.filter(
-                        r =>
-                          r.status ===
-                          'Realizado com pendência'
+                        r=>
+                          r.status==='Realizado com pendência'
                       ).length
                     }
                   </strong>
@@ -2692,14 +2398,12 @@ export default function Tower() {
                   </span>
                 </div>
 
-
                 <div>
                   <strong>
                     {
                       all.filter(
-                        r =>
-                          r.status ===
-                          'Justificado'
+                        r=>
+                          r.status==='Justificado'
                       ).length
                     }
                   </strong>
@@ -2710,35 +2414,25 @@ export default function Tower() {
 
               </div>
 
-
               <Panel
                 title="Atrasos e registros incompletos"
                 extra={
                   <span className="meta">
-                    {fmtDate(
-                      date
-                    )}
-                    {' · '}
-                    todos os períodos
+                    {fmtDate(date)} · todos os períodos
                   </span>
                 }
               >
-                {obligationTable(
-                  pending
-                )}
+                {obligationTable(pending)}
               </Panel>
-
 
               <Panel title="Ocorrências justificadas">
                 {obligationTable(
                   all.filter(
-                    r =>
-                      r.status ===
-                      'Justificado'
+                    r=>
+                      r.status==='Justificado'
                   )
                 )}
               </Panel>
-
 
               <p className="footnote">
                 Justificativas preservam a ocorrência no histórico. Não contam como DDS realizado nem retiram a obrigação do denominador nesta versão.
@@ -2747,83 +2441,64 @@ export default function Tower() {
             </>
           )}
 
-
-          {view ===
-            'HISTÓRICO' && (
+          {view==='HISTÓRICO' && (
             <>
 
               <div className="filters">
 
                 <div className="search">
 
-                  <Search
-                    size={18}
-                  />
+                  <Search size={18}/>
 
                   <input
                     placeholder="Buscar navio, equipe, aplicador ou tema"
                     value={q}
-                    onChange={e =>
-                      setQ(
-                        e.target
-                          .value
-                      )
+                    onChange={
+                      e=>
+                        setQ(
+                          e.target.value
+                        )
                     }
                   />
 
                 </div>
 
-
                 <select
                   aria-label="Filtrar tipo"
                   value={type}
-                  onChange={e =>
-                    setType(
-                      e.target
-                        .value
-                    )
+                  onChange={
+                    e=>
+                      setType(
+                        e.target.value
+                      )
                   }
                 >
-
                   {[
                     'Todos',
-                    ...TYPES,
-                  ].map(t => (
-                    <option
-                      key={t}
-                    >
-                      {t}
-                    </option>
-                  ))}
-
+                    ...TYPES
+                  ].map(
+                    t=>(
+                      <option key={t}>
+                        {t}
+                      </option>
+                    )
+                  )}
                 </select>
 
-
                 <button
-                  onClick={
-                    exportCSV
-                  }
+                  onClick={exportCSV}
                 >
-                  <Download
-                    size={
-                      17
-                    }
-                  />
-
+                  <Download size={17}/>
                   Exportar CSV
                 </button>
 
               </div>
 
-
               <Panel
                 title="Respostas registradas"
                 extra={
                   <span className="meta">
-                    {
-                      visibleRecords.length
-                    }{' '}
-                    registros · mais recentes primeiro
+                    {visibleRecords.length} registros · mais recentes primeiro
                   </span>
                 }
               >
@@ -2849,60 +2524,42 @@ export default function Tower() {
                         <th>
                           Aplicador
                         </th>
-                        <th />
+                        <th/>
                       </tr>
                     </thead>
-
 
                     <tbody>
 
                       {visibleRecords.map(
-                        r => (
-
-                          <tr
-                            key={
-                              r.id
-                            }
-                          >
+                        r=>(
+                          <tr key={r.id}>
 
                             <td>
-                              {fmtDate(
-                                r.date
-                              )}
+                              {fmtDate(r.date)}
 
                               <small>
-                                {fmtTime(
-                                  r.applied
-                                )}
+                                {fmtTime(r.applied)}
                               </small>
                             </td>
-
 
                             <td>
 
                               <strong>
-                                {r.type ===
-                                'NAVIO'
-                                  ? r.ship
-                                  : r.type ||
-                                    'Tipo não informado'}
+                                {r.type==='NAVIO'
+                                  ?r.ship
+                                  :r.type ||
+                                   'Tipo não informado'}
                               </strong>
 
                               <small>
-                                {
-                                  r.source
-                                }
+                                {r.source}
                               </small>
 
                             </td>
 
-
                             <td>
-                              {
-                                r.period
-                              }
+                              {r.period}
                             </td>
-
 
                             <td>
 
@@ -2912,22 +2569,33 @@ export default function Tower() {
                                     r,
                                     s.settings
                                   )
-                                    ? 'Revisar classificação'
-                                    : issues(
-                                          r,
-                                          s
-                                        )
-                                        .length
-                                      ? 'Realizado com pendência'
-                                      : 'Realizado'
+                                    ?'Revisar classificação'
+                                    :issues(
+                                       r,
+                                       s
+                                     ).length
+                                      ?'Realizado com pendência'
+                                      :'Realizado'
                                 }
                               />
 
+                              {reviewReasons(
+                                r,
+                                s.settings
+                              ).length>0 && (
+                                <small className="review-flag">
+                                  {
+                                    reviewReasons(
+                                      r,
+                                      s.settings
+                                    ).join(' · ')
+                                  }
+                                </small>
+                              )}
 
                               {unmatched.some(
-                                x =>
-                                  x.id ===
-                                  r.id
+                                x=>
+                                  x.id===r.id
                               ) && (
                                 <small>
                                   Sem vínculo com programação
@@ -2936,23 +2604,18 @@ export default function Tower() {
 
                             </td>
 
-
                             <td>
-                              {
-                                r.applicator
-                              }
+                              {r.applicator}
                             </td>
-
 
                             <td>
                               <button
-                                onClick={() =>
-                                  setModal({
-                                    kind:
-                                      'detail',
-                                    record:
-                                      r,
-                                  })
+                                onClick={
+                                  ()=>
+                                    setModal({
+                                      kind:'detail',
+                                      record:r
+                                    })
                                 }
                               >
                                 Ver registro
@@ -2967,7 +2630,6 @@ export default function Tower() {
 
                   </table>
 
-
                   {!visibleRecords.length && (
                     <div className="empty">
                       Nenhum registro encontrado.
@@ -2978,7 +2640,6 @@ export default function Tower() {
 
               </Panel>
 
-
               <p className="footnote">
                 O período selecionado no formulário prevalece sobre o horário de aplicação. Registros sem tipo ou com período incompatível ficam para revisão.
               </p>
@@ -2986,9 +2647,7 @@ export default function Tower() {
             </>
           )}
 
-
-          {view ===
-            'ADERÊNCIA' && (
+          {view==='ADERÊNCIA' && (
             <AdherenceView
               state={s}
               date={date}
@@ -2996,59 +2655,52 @@ export default function Tower() {
             />
           )}
 
-
           {tv && (
             <DayDashboard
               state={s}
               date={date}
               now={now}
-              onOpen={item =>
-                setModal({
-                  kind:
-                    'obligation',
-                  item,
-                })
+              onOpen={
+                item=>
+                  setModal({
+                    kind:'obligation',
+                    item
+                  })
               }
-              onPeriod={i => {
-                setPeriod(i);
-                navigate(
-                  'HOJE'
-                );
-              }}
+              onPeriod={
+                i=>{
+                  setPeriod(i);
+                  navigate('HOJE');
+                }
+              }
             />
           )}
 
-
-          {view ===
-            'CONFIGURAÇÕES' && (
+          {view==='CONFIGURAÇÕES' && (
             <div className="config-grid">
 
               <Panel
                 title="Regras e períodos"
                 className="rules-panel"
               >
+
                 <RulesEditor
                   key={rev}
-                  settings={
-                    s.settings
-                  }
+                  settings={s.settings}
                   busy={busy}
                   onSave={
-                    settings => {
-                      setPeriod(
-                        0
-                      );
+                    settings=>{
+                      setPeriod(0);
 
                       save({
-                        action:
-                          'settings',
-                        settings,
+                        action:'settings',
+                        settings
                       });
                     }
                   }
                 />
-              </Panel>
 
+              </Panel>
 
               <Panel title="Legenda de status">
 
@@ -3060,18 +2712,12 @@ export default function Tower() {
                     'Atrasado',
                     'Realizado',
                     'Realizado com pendência',
-                    'Justificado',
+                    'Justificado'
                   ].map(
-                    (v, i) => (
-                      <div
-                        key={v}
-                      >
+                    (v,i)=>(
+                      <div key={v}>
 
-                        <Badge
-                          text={
-                            v
-                          }
-                        />
+                        <Badge text={v}/>
 
                         <span>
                           {
@@ -3081,7 +2727,7 @@ export default function Tower() {
                               'Prazo vencido, sem DDS',
                               'Registro com campos completos',
                               'Registro com informação faltante',
-                              'Ocorrência com motivo registrado',
+                              'Ocorrência com motivo registrado'
                             ][i]
                           }
                         </span>
@@ -3094,62 +2740,89 @@ export default function Tower() {
 
               </Panel>
 
+              {legacyTestRecords.length>0 && (
+                <Panel title="Limpeza de produção">
+
+                  <div className="settings-body">
+
+                    <p>
+                      {legacyTestRecords.length} registro(s) legado(s) de teste ainda estão armazenados no Firestore.
+                    </p>
+
+                    <p className="meta">
+                      A limpeza remove apenas registros com origem “Excel de teste” ou “Registro manual de teste”. Registros atuais da Hashdata API não são removidos.
+                    </p>
+
+                    <button
+                      className="primary"
+                      disabled={busy}
+                      onClick={
+                        ()=>
+                          setModal({
+                            kind:'cleanup-test',
+                            count:
+                              legacyTestRecords.length
+                          })
+                      }
+                    >
+                      Remover dados legados de teste
+                    </button>
+
+                  </div>
+
+                </Panel>
+              )}
+
             </div>
           )}
 
-
           <footer>
-
             <span>
-              DDS CONTROL TOWER
-              {' '}
-              <b>•</b>
-              {' '}
-              AMBIENTE DE TESTES
+              DDS CONTROL TOWER <b>•</b> AMBIENTE OPERACIONAL
             </span>
 
             <span>
               Período informado no formulário · Horário de Brasília
             </span>
-
           </footer>
 
         </div>
 
       </main>
 
-
       {modal && (
         <Modal
           title={
-            modal.kind ===
-            'ship'
-              ? (
+            modal.kind==='ship'
+              ?
+                (
                   modal.ship
-                    ? 'Gerenciar navio'
-                    : 'Novo navio'
+                    ?'Gerenciar navio'
+                    :'Novo navio'
                 )
-              : modal.kind ===
-                  'import'
-                ? 'Importar programação dos e-mails'
-                : modal.kind ===
-                    'hashdata-import'
-                  ? 'Importar Excel Hashdata'
-                  : modal.kind ===
-                      'record'
-                    ? 'Registrar DDS de teste'
-                    : modal.kind ===
-                        'confirm'
-                      ? 'Confirmar alteração'
-                      : modal.kind ===
-                          'justify'
-                        ? 'Justificar ocorrência'
-                        : 'Detalhes do DDS'
+              :
+                modal.kind==='import'
+                  ?'Importar programação dos e-mails'
+                  :
+                    modal.kind==='record'
+                      ?'Registrar DDS'
+                      :
+                        modal.kind==='cleanup-test'
+                          ?'Remover dados legados de teste'
+                          :
+                            modal.kind==='confirm'
+                              ?'Confirmar alteração'
+                              :
+                                modal.kind==='justify'
+                                  ?'Justificar ocorrência'
+                                  :'Detalhes do DDS'
           }
-          close={() => {
-            setModal(null);
-            setError('');
-          }}
+          close={
+            ()=>{
+              setModal(null);
+              setError('');
+            }
+          }
         >
 
           {error && (
@@ -3161,189 +2834,83 @@ export default function Tower() {
             </div>
           )}
 
-
-          {modal.kind ===
-            'import' && (
+          {modal.kind==='import' && (
             <EmailImporter
-              ships={
-                s.ships
-              }
+              ships={s.ships}
               busy={busy}
               onSave={
-                ships =>
+                ships=>
                   save({
-                    action:
-                      'import-files',
-                    ships,
+                    action:'import-files',
+                    ships
                   })
               }
             />
           )}
 
-
-          {modal.kind ===
-            'hashdata-import' && (
-            <form
-              className="settings-body"
-              onSubmit={e => {
-                e.preventDefault();
-
-                save({
-                  action:
-                    'import-hashdata-tests',
-
-                  ids:
-                    Array.from(
-                      new FormData(
-                        e.currentTarget
-                      ).getAll(
-                        'ids'
-                      )
-                    ),
-                });
-              }}
-            >
+          {modal.kind==='cleanup-test' && (
+            <div className="settings-body">
 
               <p>
-                Excel anexado:{' '}
-                {
-                  hashdataTests.length
-                }{' '}
-                respostas. Os IDs do Hashdata evitam duplicação.
+                Remover {modal.count} registro(s) legado(s) de teste do Firestore?
               </p>
 
-
-              <div className="import-list">
-
-                {hashdataTests.map(
-                  r => (
-                    <label
-                      className="import-item"
-                      key={
-                        r.id
-                      }
-                    >
-
-                      <input
-                        type="checkbox"
-                        name="ids"
-                        value={
-                          r.id
-                        }
-                        defaultChecked={
-                          !s.records.some(
-                            x =>
-                              x.id ===
-                              r.id
-                          )
-                        }
-                      />
-
-
-                      <div>
-
-                        <strong>
-                          {r.type ||
-                            'Tipo não informado'}
-
-                          {r.ship
-                            ? ' · ' +
-                              r.ship
-                            : ''}
-                        </strong>
-
-                        <p>
-                          {r.date}
-                          {' · '}
-                          {r.period}
-                        </p>
-
-                        <small>
-                          {
-                            r.applicator
-                          }
-                          {' · '}
-                          {r.topics ||
-                            'Sem tema'}
-                        </small>
-
-                      </div>
-
-                    </label>
-                  )
-                )}
-
-              </div>
-
-
-              <p className="review-flag">
-                Registros sem tipo ou com período incompatível com a equipe e a data ficam para revisão.
+              <p className="meta">
+                Serão removidos somente registros com origem “Excel de teste” ou “Registro manual de teste”. A sincronização atual da Hashdata será preservada.
               </p>
-
 
               <div className="modal-actions">
 
                 <button
-                  type="button"
-                  onClick={() =>
-                    setModal(
-                      null
-                    )
+                  onClick={
+                    ()=>setModal(null)
                   }
                 >
                   Voltar
                 </button>
 
-
                 <button
                   className="primary"
-                  disabled={
-                    busy ||
-                    hashdataTests.every(
-                      r =>
-                        s.records.some(
-                          x =>
-                            x.id ===
-                            r.id
-                        )
-                    )
+                  disabled={busy}
+                  onClick={
+                    ()=>
+                      save({
+                        action:'cleanup-test-data'
+                      })
                   }
                 >
-                  Importar testes selecionados
+                  Confirmar limpeza
                 </button>
 
               </div>
 
-            </form>
+            </div>
           )}
 
-
-          {modal.kind ===
-            'ship' && (
+          {modal.kind==='ship' && (
             <form
-              onSubmit={e => {
+              onSubmit={
+                e=>{
+                  e.preventDefault();
 
-                e.preventDefault();
+                  const f=
+                    Object.fromEntries(
+                      new FormData(
+                        e.currentTarget
+                      )
+                    );
 
-                const f =
-                  Object.fromEntries(
-                    new FormData(
-                      e.currentTarget
-                    )
-                  );
+                  save({
+                    action:'ship',
 
-                save({
-                  action:
-                    'ship',
-
-                  ship: {
-                    ...f,
-                    id:
-                      modal.ship
-                        ?.id,
-                  },
-                });
-              }}
+                    ship:{
+                      ...f,
+                      id:
+                        modal.ship?.id
+                    }
+                  });
+                }
+              }
             >
 
               <div className="form-grid">
@@ -3353,27 +2920,23 @@ export default function Tower() {
                     name="name"
                     required
                     defaultValue={
-                      modal.ship
-                        ?.name ||
+                      modal.ship?.name ||
                       modal.name ||
                       ''
                     }
                   />
                 </Field>
 
-
                 <Field label="Berço">
                   <input
                     name="berth"
                     required
                     defaultValue={
-                      modal.ship
-                        ?.berth ||
+                      modal.ship?.berth ||
                       ''
                     }
                   />
                 </Field>
-
 
                 <Field label="Início da operação">
                   <input
@@ -3387,12 +2950,10 @@ export default function Tower() {
                           0,
                           16
                         ) ||
-                      date +
-                        'T13:00'
+                      date+'T13:00'
                     }
                   />
                 </Field>
-
 
                 <Field label="Fim previsto">
                   <input
@@ -3406,12 +2967,10 @@ export default function Tower() {
                           0,
                           16
                         ) ||
-                      date +
-                        'T23:00'
+                      date+'T23:00'
                     }
                   />
                 </Field>
-
 
                 <div className="span2">
 
@@ -3419,39 +2978,25 @@ export default function Tower() {
                     <textarea
                       name="note"
                       defaultValue={
-                        modal.ship
-                          ?.note ||
+                        modal.ship?.note ||
                         ''
                       }
                     />
                   </Field>
 
-
-                  {modal.ship
-                    ?.source && (
+                  {modal.ship?.source && (
                     <p className="meta">
-                      Fonte:{' '}
-                      {
-                        modal.ship
-                          .source
-                      }
-                      {' · '}
-                      Início:{' '}
-                      {
-                        modal.ship
-                          .startBasis
-                      }
+                      Fonte: {modal.ship.source} · Início: {modal.ship.startBasis}
                     </p>
                   )}
-
 
                   {modal.ship
                     ?.review
                     ?.map(
                       (
-                        x: string,
-                        i: number
-                      ) => (
+                        x:string,
+                        i:number
+                      )=>(
                         <small
                           className="review-flag"
                           key={i}
@@ -3465,20 +3010,16 @@ export default function Tower() {
 
               </div>
 
-
               <div className="modal-actions">
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setModal(
-                      null
-                    )
+                  onClick={
+                    ()=>setModal(null)
                   }
                 >
                   Voltar
                 </button>
-
 
                 <button
                   className="primary"
@@ -3486,9 +3027,7 @@ export default function Tower() {
                     busy ||
                     (
                       modal.ship &&
-                      modal.ship
-                        .status !==
-                        'Ativo'
+                      modal.ship.status!=='Ativo'
                     )
                   }
                 >
@@ -3497,53 +3036,43 @@ export default function Tower() {
 
               </div>
 
-
               {modal.ship && (
                 <div className="operation-actions">
 
                   {[
                     'finish',
                     'cancel',
-                    'delete',
+                    'delete'
                   ].map(
                     (
                       action,
                       i
-                    ) => (
+                    )=>(
                       <button
-                        key={
-                          action
-                        }
+                        key={action}
                         type="button"
                         disabled={
                           busy ||
                           (
-                            action !==
-                              'delete' &&
-                            modal.ship
-                              .status !==
-                              'Ativo'
+                            action!=='delete' &&
+                            modal.ship.status!=='Ativo'
                           )
                         }
-                        onClick={() =>
-                          setModal({
-                            kind:
-                              'confirm',
-                            action,
-                            id:
-                              modal.ship
-                                .id,
-                            name:
-                              modal.ship
-                                .name,
-                          })
+                        onClick={
+                          ()=>
+                            setModal({
+                              kind:'confirm',
+                              action,
+                              id:modal.ship.id,
+                              name:modal.ship.name
+                            })
                         }
                       >
                         {
                           [
                             'Finalizar agora',
                             'Cancelar operação',
-                            'Excluir cadastro',
+                            'Excluir cadastro'
                           ][i]
                         }
                       </button>
@@ -3556,56 +3085,42 @@ export default function Tower() {
             </form>
           )}
 
-
-          {modal.kind ===
-            'confirm' && (
+          {modal.kind==='confirm' && (
             <div className="settings-body">
 
               <p>
                 <strong>
-                  {
-                    modal.name
-                  }
+                  {modal.name}
                 </strong>
               </p>
 
-
               <p>
-                {modal.action ===
-                'finish'
-                  ? 'Registrar a saída no horário atual e encerrar novas obrigações?'
-                  : modal.action ===
-                      'cancel'
-                    ? 'Cancelar a operação e retirar seus DDS da programação? O histórico de respostas será preservado.'
-                    : 'Excluir o cadastro da programação? As respostas e o histórico de alterações serão preservados.'}
+                {modal.action==='finish'
+                  ?'Registrar a saída no horário atual e encerrar novas obrigações?'
+                  :modal.action==='cancel'
+                    ?'Cancelar a operação e retirar seus DDS da programação? O histórico de respostas será preservado.'
+                    :'Excluir o cadastro da programação? As respostas e o histórico de alterações serão preservados.'}
               </p>
-
 
               <div className="modal-actions">
 
                 <button
-                  onClick={() =>
-                    setModal(
-                      null
-                    )
+                  onClick={
+                    ()=>setModal(null)
                   }
                 >
                   Voltar
                 </button>
 
-
                 <button
-                  disabled={
-                    busy
-                  }
+                  disabled={busy}
                   className="primary"
-                  onClick={() =>
-                    save({
-                      action:
-                        modal.action,
-                      id:
-                        modal.id,
-                    })
+                  onClick={
+                    ()=>
+                      save({
+                        action:modal.action,
+                        id:modal.id
+                      })
                   }
                 >
                   Confirmar
@@ -3616,44 +3131,37 @@ export default function Tower() {
             </div>
           )}
 
-
-          {modal.kind ===
-            'record' && (
+          {modal.kind==='record' && (
             <form
-              onSubmit={e => {
+              onSubmit={
+                e=>{
+                  e.preventDefault();
 
-                e.preventDefault();
+                  const f=
+                    new FormData(
+                      e.currentTarget
+                    );
 
-                const f =
-                  new FormData(
-                    e.currentTarget
-                  );
+                  save({
+                    action:'record',
 
-                save({
-                  action:
-                    'record',
-
-                  record: {
-                    ...Object.fromEntries(
-                      f
-                    ),
-
-                    id:
-                      modal.record
-                        .id,
-
-                    photo:
-                      f.has(
-                        'photo'
+                    record:{
+                      ...Object.fromEntries(
+                        f
                       ),
 
-                    signature:
-                      f.has(
-                        'signature'
-                      ),
-                  },
-                });
-              }}
+                      id:
+                        modal.record.id,
+
+                      photo:
+                        f.has('photo'),
+
+                      signature:
+                        f.has('signature')
+                    }
+                  });
+                }
+              }
             >
 
               <div className="form-grid">
@@ -3663,14 +3171,12 @@ export default function Tower() {
                   <select
                     name="type"
                     required
-                    value={
-                      recordType
-                    }
-                    onChange={e =>
-                      setRecordType(
-                        e.target
-                          .value
-                      )
+                    value={recordType}
+                    onChange={
+                      e=>
+                        setRecordType(
+                          e.target.value
+                        )
                     }
                   >
 
@@ -3679,10 +3185,8 @@ export default function Tower() {
                     </option>
 
                     {TYPES.map(
-                      t => (
-                        <option
-                          key={t}
-                        >
+                      t=>(
+                        <option key={t}>
                           {t}
                         </option>
                       )
@@ -3692,64 +3196,36 @@ export default function Tower() {
 
                 </Field>
 
-
                 <Field label="Nome do navio (para NAVIO)">
                   <input
                     name="ship"
                     defaultValue={
-                      modal.record
-                        .ship
+                      modal.record.ship
                     }
                   />
                 </Field>
 
-
                 <Field label="Data operacional do período">
-
                   <input
                     name="date"
                     type="date"
                     required
-                    value={
-                      recordDate
-                    }
-                    onChange={e => {
-
-                      const newDate =
-                        e.target
-                          .value;
-
-                      setRecordDate(
-                        newDate
-                      );
-
-                      const available =
-                        typePeriods(
-                          recordType,
-                          newDate
-                        );
-
-                      if (
-                        !available.includes(
-                          modal.record
-                            .period
+                    value={recordDate}
+                    onChange={
+                      e=>
+                        setRecordDate(
+                          e.target.value
                         )
-                      ) {
-                        modal.record.period =
-                          '';
-                      }
-                    }}
+                    }
                   />
-
                 </Field>
-
 
                 <Field label="Período informado">
 
                   <select
                     key={
-                      recordType +
-                      '-' +
+                      recordType+
+                      '-'+
                       recordDate
                     }
                     name="period"
@@ -3759,12 +3235,10 @@ export default function Tower() {
                         recordType,
                         recordDate
                       ).includes(
-                        modal.record
-                          .period
+                        modal.record.period
                       )
-                        ? modal.record
-                            .period
-                        : ''
+                        ?modal.record.period
+                        :''
                     }
                   >
 
@@ -3772,15 +3246,12 @@ export default function Tower() {
                       Selecione
                     </option>
 
-
                     {typePeriods(
                       recordType,
                       recordDate
                     ).map(
-                      p => (
-                        <option
-                          key={p}
-                        >
+                      p=>(
+                        <option key={p}>
                           {p}
                         </option>
                       )
@@ -3789,7 +3260,6 @@ export default function Tower() {
                   </select>
 
                 </Field>
-
 
                 <Field label="Data e hora da aplicação">
                   <input
@@ -3807,106 +3277,93 @@ export default function Tower() {
                   />
                 </Field>
 
-
                 <Field label="Aplicador">
                   <input
                     name="applicator"
                     defaultValue={
-                      modal.record
-                        .applicator
+                      modal.record.applicator
                     }
                   />
                 </Field>
-
 
                 <Field label="Supervisor">
                   <input
                     name="supervisor"
                     defaultValue={
-                      modal.record
-                        .supervisor
+                      modal.record.supervisor
                     }
                   />
                 </Field>
-
 
                 <Field label="Participantes">
                   <textarea
                     name="participants"
                     defaultValue={
-                      modal.record
-                        .participants
+                      modal.record.participants
                     }
                   />
                 </Field>
 
-
                 <div className="span2">
+
                   <Field label="Temas abordados">
                     <textarea
                       name="topics"
                       defaultValue={
-                        modal.record
-                          .topics
+                        modal.record.topics
                       }
                     />
                   </Field>
+
                 </div>
 
-
                 <label className="check">
+
                   <input
                     type="checkbox"
                     name="photo"
                     defaultChecked={
-                      modal.record
-                        .photo
+                      modal.record.photo
                     }
                   />
 
                   Foto informada
+
                 </label>
 
-
                 <label className="check">
+
                   <input
                     type="checkbox"
                     name="signature"
                     defaultChecked={
-                      modal.record
-                        .signature
+                      modal.record.signature
                     }
                   />
 
                   Assinatura informada
+
                 </label>
 
               </div>
 
-
               <p className="form-note">
-                Simulação: estes campos indicam presença de evidências; não anexam arquivos. Não envia alterações ao Hashdata.
+                O registro manual é armazenado apenas no DDS Control e não altera o formulário no Hashdata.
               </p>
-
 
               <div className="modal-actions">
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setModal(
-                      null
-                    )
+                  onClick={
+                    ()=>setModal(null)
                   }
                 >
                   Voltar
                 </button>
 
-
                 <button
-                  disabled={
-                    busy
-                  }
+                  disabled={busy}
                   className="primary"
                 >
                   Salvar DDS
@@ -3917,45 +3374,33 @@ export default function Tower() {
             </form>
           )}
 
-
-          {modal.kind ===
-            'justify' && (
+          {modal.kind==='justify' && (
             <form
               className="settings-body"
-              onSubmit={e => {
+              onSubmit={
+                e=>{
+                  e.preventDefault();
 
-                e.preventDefault();
+                  save({
+                    action:'justify',
 
-                save({
-                  action:
-                    'justify',
+                    key:
+                      modal.item.key,
 
-                  key:
-                    modal.item
-                      .key,
-
-                  reason:
-                    new FormData(
-                      e.currentTarget
-                    ).get(
-                      'reason'
-                    ),
-                });
-              }}
+                    reason:
+                      new FormData(
+                        e.currentTarget
+                      ).get(
+                        'reason'
+                      )
+                  });
+                }
+              }
             >
 
               <p>
-                {
-                  modal.item
-                    .reference
-                }
-                {' · '}
-                {
-                  modal.item
-                    .period
-                }
+                {modal.item.reference} · {modal.item.period}
               </p>
-
 
               <Field label="Motivo da justificativa">
                 <textarea
@@ -3966,287 +3411,226 @@ export default function Tower() {
                 />
               </Field>
 
-
               <div className="modal-actions">
+
                 <button
                   className="primary"
-                  disabled={
-                    busy
-                  }
+                  disabled={busy}
                 >
                   Salvar justificativa
                 </button>
+
               </div>
 
             </form>
           )}
 
-
           {[
             'obligation',
-            'detail',
+            'detail'
           ].includes(
             modal.kind
           ) &&
-            (() => {
+          (()=>{
 
-              const r:
-                | RecordDDS
-                | undefined =
-                modal.record ||
-                modal.item
-                  ?.record;
+            const r:
+              RecordDDS|undefined=
+              modal.record ||
+              modal.item?.record;
 
+            const item:
+              Obligation|undefined=
+              modal.item;
 
-              const item:
-                | Obligation
-                | undefined =
-                modal.item;
+            return (
+              <div className="settings-body">
 
+                {item && (
+                  <>
 
-              return (
-                <div className="settings-body">
+                    <h3>
+                      {item.reference}
+                    </h3>
 
-                  {item && (
-                    <>
+                    <Badge
+                      text={
+                        item.status
+                      }
+                    />
 
-                      <h3>
-                        {
-                          item.reference
-                        }
-                      </h3>
+                    <p>
+                      {fmtDate(item.date)} · {item.period} · Prazo {fmtTime(item.due)}
+                    </p>
 
-                      <Badge
-                        text={
-                          item.status
-                        }
-                      />
-
+                    {item.reason && (
                       <p>
+                        <strong>
+                          Justificativa:
+                        </strong>
+                        {' '}
+                        {item.reason}
+                      </p>
+                    )}
+
+                  </>
+                )}
+
+                {r && (
+                  <>
+
+                    <dl>
+
+                      <dt>
+                        Tipo / navio
+                      </dt>
+
+                      <dd>
+                        {r.type||'Não informado'} {r.ship}
+                      </dd>
+
+                      <dt>
+                        Aplicação
+                      </dt>
+
+                      <dd>
                         {fmtDate(
-                          item.date
+                          r.applied.slice(
+                            0,
+                            10
+                          )
                         )}
+                        {' '}
+                        {fmtTime(r.applied)}
+                      </dd>
+
+                      <dt>
+                        Período informado
+                      </dt>
+
+                      <dd>
+                        {r.period}
+                      </dd>
+
+                      <dt>
+                        Aplicador
+                      </dt>
+
+                      <dd>
+                        {r.applicator||'Não informado'}
+                      </dd>
+
+                      <dt>
+                        Supervisor
+                      </dt>
+
+                      <dd>
+                        {r.supervisor||'Não informado'}
+                      </dd>
+
+                      <dt>
+                        Participantes
+                      </dt>
+
+                      <dd className="pre">
+                        {r.participants||'Não informado'}
+                      </dd>
+
+                      <dt>
+                        Temas
+                      </dt>
+
+                      <dd className="pre">
+                        {r.topics||'Não informado'}
+                      </dd>
+
+                      <dt>
+                        Foto / assinatura
+                      </dt>
+
+                      <dd>
+                        {r.photo
+                          ?'Foto indicada'
+                          :'Sem foto'}
                         {' · '}
-                        {
-                          item.period
-                        }
-                        {' · '}
-                        Prazo{' '}
-                        {fmtTime(
-                          item.due
-                        )}
+                        {r.signature
+                          ?'Assinatura indicada'
+                          :'Sem assinatura'}
+                      </dd>
+
+                    </dl>
+
+                    <p className="meta">
+                      A exportação informa a presença dos anexos. Os arquivos de foto e assinatura ainda não foram carregados.
+                    </p>
+
+                    {issues(
+                      r,
+                      s
+                    ).length>0 && (
+                      <p className="alert warning">
+                        Faltam: {issues(r,s).join(', ')}
                       </p>
+                    )}
 
-
-                      {item.reason && (
-                        <p>
-                          <strong>
-                            Justificativa:
-                          </strong>{' '}
-                          {
-                            item.reason
-                          }
-                        </p>
-                      )}
-
-                    </>
-                  )}
-
-
-                  {r && (
-                    <>
-
-                      <dl>
-
-                        <dt>
-                          Tipo / navio
-                        </dt>
-
-                        <dd>
-                          {r.type ||
-                            'Não informado'}
-                          {' '}
-                          {
-                            r.ship
-                          }
-                        </dd>
-
-
-                        <dt>
-                          Aplicação
-                        </dt>
-
-                        <dd>
-                          {fmtDate(
-                            r.applied.slice(
-                              0,
-                              10
-                            )
-                          )}
-                          {' '}
-                          {fmtTime(
-                            r.applied
-                          )}
-                        </dd>
-
-
-                        <dt>
-                          Período informado
-                        </dt>
-
-                        <dd>
-                          {
-                            r.period
-                          }
-                        </dd>
-
-
-                        <dt>
-                          Aplicador
-                        </dt>
-
-                        <dd>
-                          {r.applicator ||
-                            'Não informado'}
-                        </dd>
-
-
-                        <dt>
-                          Supervisor
-                        </dt>
-
-                        <dd>
-                          {r.supervisor ||
-                            'Não informado'}
-                        </dd>
-
-
-                        <dt>
-                          Participantes
-                        </dt>
-
-                        <dd className="pre">
-                          {r.participants ||
-                            'Não informado'}
-                        </dd>
-
-
-                        <dt>
-                          Temas
-                        </dt>
-
-                        <dd className="pre">
-                          {r.topics ||
-                            'Não informado'}
-                        </dd>
-
-
-                        <dt>
-                          Foto / assinatura
-                        </dt>
-
-                        <dd>
-                          {r.photo
-                            ? 'Foto indicada'
-                            : 'Sem foto'}
-                          {' · '}
-                          {r.signature
-                            ? 'Assinatura indicada'
-                            : 'Sem assinatura'}
-                        </dd>
-
-                      </dl>
-
-
-                      <p className="meta">
-                        A exportação informa a presença dos anexos. Os arquivos de foto e assinatura ainda não foram carregados.
-                      </p>
-
-
-                      {issues(
-                        r,
-                        s
-                      ).length >
-                        0 && (
-                        <p className="alert warning">
-                          Faltam:{' '}
-                          {issues(
-                            r,
-                            s
-                          ).join(
-                            ', '
-                          )}
-                        </p>
-                      )}
-
-
-                      <button
-                        onClick={() =>
+                    <button
+                      onClick={
+                        ()=>
                           recordForm(
                             undefined,
                             r
                           )
-                        }
-                      >
-                        Editar registro de teste
-                      </button>
+                      }
+                    >
+                      Editar registro
+                    </button>
 
-                    </>
-                  )}
+                  </>
+                )}
 
+                {item && !r && (
+                  <div className="modal-actions">
 
-                  {item &&
-                    !r && (
-                    <div className="modal-actions">
+                    <button
+                      onClick={
+                        ()=>recordForm(item)
+                      }
+                    >
+                      Registrar DDS
+                    </button>
 
-                      <button
-                        onClick={() =>
-                          recordForm(
-                            item
-                          )
-                        }
-                      >
-                        Registrar DDS
-                      </button>
-
-
-                      {item.status ===
-                      'Justificado'
-                        ? (
-                          <button
-                            onClick={() =>
+                    {item.status==='Justificado'
+                      ?
+                        <button
+                          onClick={
+                            ()=>
                               save({
-                                action:
-                                  'unjustify',
-                                key:
-                                  item.key,
+                                action:'unjustify',
+                                key:item.key
                               })
-                            }
-                          >
-                            Remover justificativa
-                          </button>
-                        )
-                        : (
-                          <button
-                            className="primary"
-                            onClick={() =>
+                          }
+                        >
+                          Remover justificativa
+                        </button>
+                      :
+                        <button
+                          className="primary"
+                          onClick={
+                            ()=>
                               setModal({
-                                kind:
-                                  'justify',
-                                item,
+                                kind:'justify',
+                                item
                               })
-                            }
-                          >
-                            Justificar
-                          </button>
-                        )}
+                          }
+                        >
+                          Justificar
+                        </button>}
 
-                    </div>
-                  )}
+                  </div>
+                )}
 
-                </div>
-              );
-            })()}
+              </div>
+            );
+          })()}
 
         </Modal>
       )}
