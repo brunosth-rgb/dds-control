@@ -1,0 +1,7 @@
+name = "dds-hashdata-sync"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+
+[vars]
+FIREBASE_PROJECT_ID = "COLE_AQUI_O_PROJECT_ID_DO_FIREBASE"
+ALLOWED_ORIGINS = "https://brunosth-rgb.github.io,http://localhost:5173"

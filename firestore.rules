@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function ddsUser() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/ddsUsers/$(request.auth.uid));
+    }
+
+    match /ddsControl/{document=**} {
+      allow read, write: if ddsUser();
+    }
+
+    match /ddsUsers/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}

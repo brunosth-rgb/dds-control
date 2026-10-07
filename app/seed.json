@@ -1,0 +1,80 @@
+{
+  "ships": [],
+  "records": [
+    {
+      "id": "6abc28038c3f564c855f288e",
+      "type": "NAVIO",
+      "ship": "MSC teste",
+      "date": "2026-09-29",
+      "period": "13–19",
+      "applied": "2026-09-29T18:04:23",
+      "applicator": "vfvvferv",
+      "supervisor": "DIEGO RODRIGO JULIANI",
+      "participants": "vevev\nvefvefv",
+      "topics": "efvefve\nfevvev",
+      "photo": true,
+      "signature": true,
+      "source": "Excel de teste • 29/09/2026"
+    },
+    {
+      "id": "6abc27d22d48c2171f48fac3",
+      "type": "RS",
+      "ship": "",
+      "date": "2026-09-29",
+      "period": "19–01",
+      "applied": "2026-09-29T18:03:40",
+      "applicator": "joao",
+      "supervisor": "DIEGO RODRIGO JULIANI",
+      "participants": "Joao\nteste\nroberto",
+      "topics": "teste",
+      "photo": true,
+      "signature": true,
+      "source": "Excel de teste • 29/09/2026"
+    },
+    {
+      "id": "6abc25cb99cfdd26d64d9032",
+      "type": "CAM",
+      "ship": "",
+      "date": "2026-09-29",
+      "period": "13–19",
+      "applied": "2026-09-29T17:54:00",
+      "applicator": "Mickey Mouse",
+      "supervisor": "DIEGO RODRIGO JULIANI",
+      "participants": "Fabio\nRazzera",
+      "topics": "teste",
+      "photo": true,
+      "signature": true,
+      "source": "Excel de teste • 29/09/2026"
+    },
+    {
+      "id": "6abc2126627788664f09d199",
+      "type": "",
+      "ship": "",
+      "date": "2026-09-29",
+      "period": "06:00x18:00",
+      "applied": "2026-09-29T17:34:59",
+      "applicator": "Fabio Cordeiro",
+      "supervisor": "DIEGO RODRIGO JULIANI",
+      "participants": "Diego Juliani\nFabio Cordeiro",
+      "topics": "DDS CAM\n\nAtenção na velocidade",
+      "photo": true,
+      "signature": true,
+      "source": "Excel de teste • 29/09/2026"
+    }
+  ],
+  "justifications": [],
+  "audit": [
+    {
+      "at": "2026-09-29T18:05:07",
+      "action": "import",
+      "detail": "4 respostas carregadas da exportação Excel de teste. Nenhuma programação de navio foi presumida.",
+      "user": "Importação inicial"
+    }
+  ],
+  "settings": {
+    "tolerance": 30,
+    "requirePhoto": true,
+    "requireSignature": true
+  },
+  "updated": "2026-09-29T18:05:07"
+}
