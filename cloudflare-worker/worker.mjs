@@ -55,21 +55,45 @@ function tokenPayload(token) {
 
 async function authorizedFirebaseUser(request, env) {
   const authorization = request.headers.get('Authorization') || '';
-  const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  const token = authorization.startsWith('Bearer ')
+    ? authorization.slice(7).trim()
+    : '';
+
   if (!token || token.length > 8192) return null;
-  if (!env.FIREBASE_PROJECT_ID) throw new Error('FIREBASE_PROJECT_ID não configurado no Worker.');
+
+  if (!env.FIREBASE_PROJECT_ID) {
+    throw new Error('FIREBASE_PROJECT_ID não configurado no Worker.');
+  }
 
   const payload = tokenPayload(token);
   const uid = String(payload?.user_id || payload?.sub || '');
-  if (!/^[A-Za-z0-9:_-]{1,128}$/.test(uid)) return null;
+
+  if (!/^[A-Za-z0-9:_-]{1,128}$/.test(uid)) {
+    return null;
+  }
 
   const project = encodeURIComponent(env.FIREBASE_PROJECT_ID);
-  const path = `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents/ddsUsers/${encodeURIComponent(uid)}`;
+
+  const path =
+    `https://firestore.googleapis.com/v1/projects/${project}` +
+    `/databases/(default)/documents/ddsUsers/${encodeURIComponent(uid)}`;
+
   const response = await fetch(path, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     signal: AbortSignal.timeout(10000),
   });
+
   if (!response.ok) return null;
+
+  const document = await response.json();
+
+  const active =
+    document?.fields?.active?.booleanValue === true;
+
+  if (!active) return null;
+
   return { uid };
 }
 
