@@ -3,6 +3,7 @@ import PostalMime from 'postal-mime';
 import { createWorker, PSM } from 'tesseract.js';
 import lineup from './email-lineup.json';
 
+
 export type Candidate = {
   name: string;
   berth: string;
@@ -15,17 +16,22 @@ export type Candidate = {
   selected?: boolean;
 };
 
+
 export type EmailPreview = {
   file: string;
   subject: string;
   text: string;
+
   ships: Candidate[];
+
   images: {
     name: string;
     url: string;
   }[];
+
   notice: string;
 };
+
 
 type PreviewImage = {
   name: string;
@@ -34,6 +40,7 @@ type PreviewImage = {
   height?: number;
 };
 
+
 type BBox = {
   x0: number;
   y0: number;
@@ -41,10 +48,12 @@ type BBox = {
   y1: number;
 };
 
+
 type OCRWord = {
   text: string;
   bbox: BBox;
 };
+
 
 type OCRWorker =
   Awaited<
@@ -52,6 +61,7 @@ type OCRWorker =
       typeof createWorker
     >
   >;
+
 
 const plan2809: Candidate[] = [
   {
@@ -154,29 +164,43 @@ const plan2809: Candidate[] = [
   },
 ];
 
+
 const MONTHS: Record<string, number> = {
   JAN: 1,
+
   FEV: 2,
   FEB: 2,
+
   MAR: 3,
+
   ABR: 4,
   APR: 4,
+
   MAI: 5,
   MAY: 5,
+
   JUN: 6,
   JUL: 7,
+
   AGO: 8,
   AUG: 8,
+
   SET: 9,
   SEP: 9,
+
   OUT: 10,
   OCT: 10,
+
   NOV: 11,
+
   DEZ: 12,
   DEC: 12,
 };
 
-function plain(html: string) {
+
+function plain(
+  html: string
+) {
   return html
     .replace(
       /<script[\s\S]*?<\/script>/gi,
@@ -204,6 +228,7 @@ function plain(html: string) {
     );
 }
 
+
 function normalized(
   value: string
 ) {
@@ -217,9 +242,14 @@ function normalized(
       /[^A-Z0-9]+/gi,
       ' '
     )
+    .replace(
+      /\s+/g,
+      ' '
+    )
     .trim()
     .toUpperCase();
 }
+
 
 function compactSpaces(
   value: string
@@ -231,6 +261,7 @@ function compactSpaces(
     )
     .trim();
 }
+
 
 function toBase64(
   data: Uint8Array
@@ -256,6 +287,7 @@ function toBase64(
 
   return btoa(binary);
 }
+
 
 function bytesOf(
   value: unknown
@@ -294,6 +326,7 @@ function bytesOf(
   );
 }
 
+
 function mimeFor(
   name: string
 ) {
@@ -313,6 +346,7 @@ function mimeFor(
   return 'image/jpeg';
 }
 
+
 function imageDataUrl(
   name: string,
   data: Uint8Array
@@ -322,6 +356,7 @@ function imageDataUrl(
     toBase64(data)
   );
 }
+
 
 function loadImage(
   url: string
@@ -354,6 +389,7 @@ function loadImage(
   );
 }
 
+
 async function imageSize(
   url: string
 ) {
@@ -372,6 +408,7 @@ async function imageSize(
   };
 }
 
+
 function looksLikePlanName(
   name: string
 ) {
@@ -380,6 +417,7 @@ function looksLikePlanName(
   ).test(name);
 }
 
+
 function looksLikePlanSubject(
   subject: string
 ) {
@@ -387,6 +425,7 @@ function looksLikePlanSubject(
     /berth(?:ing)?[\s_-]*plan|plano\s+(?:de\s+)?atrac/i
   ).test(subject);
 }
+
 
 export function parseMovements(
   text: string,
@@ -508,6 +547,7 @@ export function parseMovements(
   return found;
 }
 
+
 function flattenWords(
   blocks:
     any[] |
@@ -554,6 +594,7 @@ function flattenWords(
             word?.text &&
             word?.bbox
           ) {
+
             words.push({
               text:
                 String(
@@ -572,16 +613,56 @@ function flattenWords(
   return words;
 }
 
+
+function defaultBerthCenters(
+  imageWidth: number
+) {
+
+  /*
+   * Posição aproximada dos títulos
+   * BERÇO 1, 2, 3 e 4 no layout
+   * padrão do Berthing Plan.
+   */
+
+  return new Map<
+    number,
+    number
+  >([
+    [
+      1,
+      imageWidth *
+      0.18,
+    ],
+    [
+      2,
+      imageWidth *
+      0.45,
+    ],
+    [
+      3,
+      imageWidth *
+      0.72,
+    ],
+    [
+      4,
+      imageWidth *
+      0.93,
+    ],
+  ]);
+}
+
+
 function berthCentersFromOCR(
   words: OCRWord[],
   imageWidth: number,
   imageHeight: number
 ) {
 
-  const candidates: {
-    berth: number;
-    x: number;
-  }[] = [];
+  const centers =
+    new Map<
+      number,
+      number
+    >();
 
   const top =
     words
@@ -589,7 +670,7 @@ function berthCentersFromOCR(
         word =>
           word.bbox.y1 <=
           imageHeight *
-          0.16
+          0.13
       )
       .sort(
         (a, b) =>
@@ -603,19 +684,13 @@ function berthCentersFromOCR(
     i++
   ) {
 
-    const word =
-      top[i];
-
     const token =
       normalized(
-        word.text
-      ).replace(
-        /0/g,
-        'O'
+        top[i].text
       );
 
     if (
-      !/BERCO|BERC/.test(
+      !/BERCO/.test(
         token
       )
     ) {
@@ -663,6 +738,7 @@ function berthCentersFromOCR(
         if (
           digit
         ) {
+
           berth =
             Number(
               digit[0]
@@ -678,114 +754,69 @@ function berthCentersFromOCR(
       berth <= 4
     ) {
 
-      candidates.push({
+      centers.set(
         berth,
-
-        x:
-          (
-            word.bbox.x0 +
-            word.bbox.x1
-          ) / 2,
-      });
-    }
-  }
-
-  const result =
-    new Map<
-      number,
-      number
-    >();
-
-  for (
-    const item
-    of candidates
-  ) {
-
-    if (
-      !result.has(
-        item.berth
-      )
-    ) {
-      result.set(
-        item.berth,
-        item.x
+        (
+          top[i].bbox.x0 +
+          top[i].bbox.x1
+        ) / 2
       );
     }
   }
 
+  /*
+   * Só usamos o OCR dos cabeçalhos
+   * se os quatro berços tiverem sido
+   * reconhecidos corretamente.
+   */
+
   if (
-    result.size >= 2
+    centers.size !== 4
   ) {
-    return result;
+    return defaultBerthCenters(
+      imageWidth
+    );
   }
 
-  /*
-   * Fallback baseado no layout padrão
-   * dos Berthing Plans da JBS Terminais.
-   */
-  return new Map<
-    number,
-    number
-  >([
-    [
-      1,
-      imageWidth *
-      0.31,
-    ],
-    [
-      2,
-      imageWidth *
-      0.53,
-    ],
-    [
-      3,
-      imageWidth *
-      0.72,
-    ],
-    [
-      4,
-      imageWidth *
-      0.90,
-    ],
-  ]);
-}
-
-function componentMask(
-  r: number,
-  g: number,
-  b: number
-) {
-
-  const max =
-    Math.max(
-      r,
-      g,
-      b
+  const values =
+    [1, 2, 3, 4].map(
+      berth =>
+        centers.get(
+          berth
+        )!
     );
 
-  const min =
-    Math.min(
-      r,
-      g,
-      b
+  if (
+    !(
+      values[0] <
+      values[1] &&
+      values[1] <
+      values[2] &&
+      values[2] <
+      values[3]
+    )
+  ) {
+    return defaultBerthCenters(
+      imageWidth
     );
+  }
 
-  const saturation =
-    max - min;
-
-  const colored =
-    saturation >= 42 &&
-    max <= 248;
-
-  const dark =
-    max <= 72;
-
-  return (
-    colored ||
-    dark
-  );
+  return centers;
 }
 
+
+/*
+ * Detecta os blocos de navios
+ * através da cor dominante.
+ *
+ * Cada navio no Berthing Plan está
+ * dentro de um grande retângulo de
+ * cor praticamente uniforme.
+ *
+ * Isso é mais confiável do que juntar
+ * todos os pixels coloridos em uma
+ * única máscara.
+ */
 function detectPlanCards(
   image:
     HTMLImageElement
@@ -823,375 +854,539 @@ function detectPlanCards(
     0
   );
 
+  const width =
+    canvas.width;
+
+  const height =
+    canvas.height;
+
+  const total =
+    width *
+    height;
+
   const pixels =
     context.getImageData(
       0,
       0,
-      canvas.width,
-      canvas.height
+      width,
+      height
     ).data;
 
-  const step =
+
+  /*
+   * RGB é reduzido para 8 níveis
+   * por canal.
+   *
+   * Isso mantém azul, verde, vermelho,
+   * roxo, preto etc. unidos mesmo com
+   * pequenas variações de compressão.
+   */
+
+  const colorGrid =
+    new Uint16Array(
+      total
+    );
+
+  const colorCounts =
+    new Uint32Array(
+      512
+    );
+
+
+  for (
+    let i = 0;
+    i < total;
+    i++
+  ) {
+
+    const offset =
+      i * 4;
+
+    const r =
+      pixels[offset];
+
+    const g =
+      pixels[offset + 1];
+
+    const b =
+      pixels[offset + 2];
+
+    const qr =
+      r >> 5;
+
+    const qg =
+      g >> 5;
+
+    const qb =
+      b >> 5;
+
+    const id =
+      (
+        qr << 6
+      ) |
+      (
+        qg << 3
+      ) |
+      qb;
+
+    colorGrid[i] =
+      id;
+
+    colorCounts[id]++;
+  }
+
+
+  const candidateColors =
+    new Uint8Array(
+      512
+    );
+
+  const minColorPixels =
     Math.max(
-      2,
-      Math.round(
-        Math.max(
-          canvas.width,
-          canvas.height
-        ) /
-        700
+      700,
+      Math.floor(
+        total *
+        0.0025
       )
     );
 
-  const gridWidth =
-    Math.ceil(
-      canvas.width /
-      step
-    );
-
-  const gridHeight =
-    Math.ceil(
-      canvas.height /
-      step
-    );
-
-  const mask =
-    new Uint8Array(
-      gridWidth *
-      gridHeight
-    );
 
   for (
-    let gy = 0;
-    gy < gridHeight;
-    gy++
+    let id = 0;
+    id < 512;
+    id++
   ) {
 
-    const y =
-      Math.min(
-        canvas.height - 1,
-        gy * step
+    if (
+      colorCounts[id] <
+      minColorPixels
+    ) {
+      continue;
+    }
+
+    const qr =
+      (
+        id >> 6
+      ) & 7;
+
+    const qg =
+      (
+        id >> 3
+      ) & 7;
+
+    const qb =
+      id & 7;
+
+    const max =
+      Math.max(
+        qr,
+        qg,
+        qb
       );
 
-    for (
-      let gx = 0;
-      gx < gridWidth;
-      gx++
+    const min =
+      Math.min(
+        qr,
+        qg,
+        qb
+      );
+
+    /*
+     * Aceita:
+     *
+     * cores suficientemente saturadas
+     * ou
+     * regiões muito escuras.
+     *
+     * Isso inclui o bloco preto.
+     */
+
+    if (
+      max - min >= 2 ||
+      max <= 1
     ) {
-
-      const x =
-        Math.min(
-          canvas.width - 1,
-          gx * step
-        );
-
-      const index =
-        (
-          y *
-          canvas.width +
-          x
-        ) *
-        4;
-
-      if (
-        componentMask(
-          pixels[index],
-          pixels[index + 1],
-          pixels[index + 2]
-        )
-      ) {
-        mask[
-          gy *
-          gridWidth +
-          gx
-        ] = 1;
-      }
+      candidateColors[id] =
+        1;
     }
   }
 
-  const seen =
+
+  const visited =
     new Uint8Array(
-      mask.length
+      total
     );
 
-  const result:
-    BBox[] =
+  const boxes:
+    {
+      box: BBox;
+      pixels: number;
+      fill: number;
+    }[] =
     [];
 
-  const directions =
-    [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ];
 
   for (
-    let gy = 0;
-    gy < gridHeight;
-    gy++
+    let root = 0;
+    root < total;
+    root++
   ) {
 
-    for (
-      let gx = 0;
-      gx < gridWidth;
-      gx++
+    const color =
+      colorGrid[root];
+
+    if (
+      !candidateColors[
+        color
+      ] ||
+      visited[root]
+    ) {
+      continue;
+    }
+
+
+    const stack:
+      number[] =
+      [root];
+
+    visited[root] =
+      1;
+
+
+    let count = 0;
+
+    let minX =
+      width;
+
+    let minY =
+      height;
+
+    let maxX = 0;
+    let maxY = 0;
+
+
+    while (
+      stack.length
     ) {
 
-      const root =
-        gy *
-        gridWidth +
-        gx;
+      const current =
+        stack.pop()!;
+
+      const y =
+        Math.floor(
+          current /
+          width
+        );
+
+      const x =
+        current -
+        y *
+        width;
+
+      count++;
 
       if (
-        !mask[root] ||
-        seen[root]
+        x < minX
       ) {
-        continue;
+        minX = x;
       }
 
-      const queue:
-        number[] =
-        [root];
+      if (
+        x > maxX
+      ) {
+        maxX = x;
+      }
 
-      seen[root] = 1;
+      if (
+        y < minY
+      ) {
+        minY = y;
+      }
 
-      let cursor = 0;
-      let count = 0;
+      if (
+        y > maxY
+      ) {
+        maxY = y;
+      }
 
-      let minX = gx;
-      let maxX = gx;
-      let minY = gy;
-      let maxY = gy;
 
-      while (
-        cursor <
-        queue.length
+      if (
+        x > 0
       ) {
 
-        const current =
-          queue[
-            cursor++
-          ];
+        const next =
+          current - 1;
 
-        const cy =
-          Math.floor(
-            current /
-            gridWidth
-          );
-
-        const cx =
-          current -
-          cy *
-          gridWidth;
-
-        count++;
-
-        minX =
-          Math.min(
-            minX,
-            cx
-          );
-
-        maxX =
-          Math.max(
-            maxX,
-            cx
-          );
-
-        minY =
-          Math.min(
-            minY,
-            cy
-          );
-
-        maxY =
-          Math.max(
-            maxY,
-            cy
-          );
-
-        for (
-          const [
-            dx,
-            dy,
-          ]
-          of directions
+        if (
+          !visited[next] &&
+          colorGrid[next] ===
+            color
         ) {
-
-          const nx =
-            cx + dx;
-
-          const ny =
-            cy + dy;
-
-          if (
-            nx < 0 ||
-            ny < 0 ||
-            nx >= gridWidth ||
-            ny >= gridHeight
-          ) {
-            continue;
-          }
-
-          const next =
-            ny *
-            gridWidth +
-            nx;
-
-          if (
-            mask[next] &&
-            !seen[next]
-          ) {
-            seen[next] = 1;
-
-            queue.push(
-              next
-            );
-          }
+          visited[next] = 1;
+          stack.push(next);
         }
       }
 
-      const x0 =
-        minX *
-        step;
-
-      const x1 =
-        Math.min(
-          canvas.width,
-          (
-            maxX + 1
-          ) *
-          step
-        );
-
-      const y0 =
-        minY *
-        step;
-
-      const y1 =
-        Math.min(
-          canvas.height,
-          (
-            maxY + 1
-          ) *
-          step
-        );
-
-      const width =
-        x1 - x0;
-
-      const height =
-        y1 - y0;
-
-      const boxArea =
-        width *
-        height;
-
-      const componentArea =
-        count *
-        step *
-        step;
-
-      const rectangularity =
-        boxArea
-          ? componentArea /
-            boxArea
-          : 0;
 
       if (
-        y0 >
-          canvas.height *
-          0.04 &&
-        width >=
-          canvas.width *
-          0.12 &&
-        width <=
-          canvas.width *
-          0.48 &&
-        height >=
-          canvas.height *
-          0.055 &&
-        height <=
-          canvas.height *
-          0.48 &&
-        boxArea >=
-          canvas.width *
-          canvas.height *
-          0.007 &&
-        rectangularity >=
-          0.32
+        x + 1 <
+        width
       ) {
 
-        result.push({
-          x0,
-          y0,
-          x1,
-          y1,
-        });
+        const next =
+          current + 1;
+
+        if (
+          !visited[next] &&
+          colorGrid[next] ===
+            color
+        ) {
+          visited[next] = 1;
+          stack.push(next);
+        }
       }
+
+
+      if (
+        y > 0
+      ) {
+
+        const next =
+          current -
+          width;
+
+        if (
+          !visited[next] &&
+          colorGrid[next] ===
+            color
+        ) {
+          visited[next] = 1;
+          stack.push(next);
+        }
+      }
+
+
+      if (
+        y + 1 <
+        height
+      ) {
+
+        const next =
+          current +
+          width;
+
+        if (
+          !visited[next] &&
+          colorGrid[next] ===
+            color
+        ) {
+          visited[next] = 1;
+          stack.push(next);
+        }
+      }
+    }
+
+
+    const boxWidth =
+      maxX -
+      minX +
+      1;
+
+    const boxHeight =
+      maxY -
+      minY +
+      1;
+
+    const area =
+      boxWidth *
+      boxHeight;
+
+    const fill =
+      area
+        ? count / area
+        : 0;
+
+
+    /*
+     * Elimina:
+     *
+     * textos,
+     * linhas da grade,
+     * cabeçalho,
+     * pequenos ícones.
+     */
+
+    if (
+      minY >
+        height *
+        0.025 &&
+
+      boxWidth >=
+        width *
+        0.10 &&
+
+      boxWidth <=
+        width *
+        0.55 &&
+
+      boxHeight >=
+        height *
+        0.045 &&
+
+      boxHeight <=
+        height *
+        0.50 &&
+
+      count >=
+        total *
+        0.0025 &&
+
+      fill >=
+        0.55
+    ) {
+
+      boxes.push({
+        box: {
+          x0:
+            minX,
+
+          y0:
+            minY,
+
+          x1:
+            maxX + 1,
+
+          y1:
+            maxY + 1,
+        },
+
+        pixels:
+          count,
+
+        fill,
+      });
     }
   }
 
-  return result
-    .filter(
-      (
-        box,
-        index,
-        all
-      ) =>
-        !all.some(
-          (
-            other,
-            otherIndex
-          ) => {
 
-            if (
-              index ===
-              otherIndex
-            ) {
-              return false;
-            }
+  /*
+   * Caso duas tonalidades da mesma
+   * caixa gerem retângulos muito
+   * semelhantes, mantemos o maior.
+   */
 
-            const inside =
-              box.x0 >=
-                other.x0 &&
-              box.x1 <=
-                other.x1 &&
-              box.y0 >=
-                other.y0 &&
-              box.y1 <=
-                other.y1;
+  const sorted =
+    boxes.sort(
+      (a, b) =>
+        b.pixels -
+        a.pixels
+    );
 
-            const otherArea =
-              (
-                other.x1 -
-                other.x0
-              ) *
-              (
-                other.y1 -
-                other.y0
-              );
 
-            const area =
-              (
-                box.x1 -
-                box.x0
-              ) *
-              (
-                box.y1 -
-                box.y0
-              );
+  const unique:
+    BBox[] =
+    [];
 
-            return (
-              inside &&
-              otherArea >
-              area *
-              1.15
-            );
-          }
+
+  const overlapRatio =
+    (
+      a: BBox,
+      b: BBox
+    ) => {
+
+      const x0 =
+        Math.max(
+          a.x0,
+          b.x0
+        );
+
+      const y0 =
+        Math.max(
+          a.y0,
+          b.y0
+        );
+
+      const x1 =
+        Math.min(
+          a.x1,
+          b.x1
+        );
+
+      const y1 =
+        Math.min(
+          a.y1,
+          b.y1
+        );
+
+      if (
+        x1 <= x0 ||
+        y1 <= y0
+      ) {
+        return 0;
+      }
+
+      const intersection =
+        (
+          x1 - x0
+        ) *
+        (
+          y1 - y0
+        );
+
+      const areaA =
+        (
+          a.x1 -
+          a.x0
+        ) *
+        (
+          a.y1 -
+          a.y0
+        );
+
+      const areaB =
+        (
+          b.x1 -
+          b.x0
+        ) *
+        (
+          b.y1 -
+          b.y0
+        );
+
+      return (
+        intersection /
+        Math.min(
+          areaA,
+          areaB
         )
-    )
+      );
+    };
+
+
+  for (
+    const item
+    of sorted
+  ) {
+
+    if (
+      unique.some(
+        existing =>
+          overlapRatio(
+            existing,
+            item.box
+          ) >
+          0.72
+      )
+    ) {
+      continue;
+    }
+
+    unique.push(
+      item.box
+    );
+  }
+
+
+  return unique
     .sort(
       (a, b) =>
         a.y0 -
@@ -1201,9 +1396,10 @@ function detectPlanCards(
     )
     .slice(
       0,
-      20
+      24
     );
 }
+
 
 function cropDataUrl(
   image:
@@ -1258,18 +1454,20 @@ function cropDataUrl(
     );
 
   const width =
-    x1 - x0;
+    x1 -
+    x0;
 
   const height =
-    y1 - y0;
+    y1 -
+    y0;
 
   const scale =
     Math.min(
-      4,
+      5,
       Math.max(
         2,
         Math.round(
-          1400 /
+          1500 /
           Math.max(
             width,
             1
@@ -1309,12 +1507,16 @@ function cropDataUrl(
 
   context.drawImage(
     image,
+
     x0,
     y0,
+
     width,
     height,
+
     0,
     0,
+
     canvas.width,
     canvas.height
   );
@@ -1323,6 +1525,7 @@ function cropDataUrl(
     'image/png'
   );
 }
+
 
 function parseStamp(
   day: string,
@@ -1398,6 +1601,7 @@ function parseStamp(
   );
 }
 
+
 function dateEvents(
   text: string,
   year: number
@@ -1410,14 +1614,18 @@ function dateEvents(
     stamp: string;
     label: string;
     raw: string;
-  }[] = [];
+  }[] =
+    [];
+
 
   const regex =
     /(\d{1,2})\s+(JAN|FEV|FEB|MAR|ABR|APR|MAI|MAY|JUN|JUL|AGO|AUG|SET|SEP|OUT|OCT|NOV|DEZ|DEC)\s+(\d{3,4})\s*(ETA|ETB|ETD|ETS|START|WORK|INICIO|FIM|SAIDA)?/gi;
 
+
   let match:
     RegExpExecArray |
     null;
+
 
   while (
     (
@@ -1459,6 +1667,119 @@ function dateEvents(
   return events;
 }
 
+
+function cleanOCRLine(
+  line: string
+) {
+  return line
+    .replace(
+      /^[^A-Z0-9]+/i,
+      ''
+    )
+    .replace(
+      /[^A-Z0-9 .\-'/]/gi,
+      ' '
+    )
+    .replace(
+      /\s+/g,
+      ' '
+    )
+    .trim();
+}
+
+
+function looksLikeVoyageCode(
+  line: string
+) {
+
+  const clean =
+    cleanOCRLine(
+      line
+    );
+
+  const compact =
+    clean.replace(
+      /\s+/g,
+      ''
+    );
+
+  const digits =
+    (
+      compact.match(
+        /\d/g
+      ) ||
+      []
+    ).length;
+
+  /*
+   * No Berthing Plan:
+   *
+   * linha 1 = viagem
+   * linha 2 = nome do navio
+   *
+   * Exemplo:
+   *
+   * MELON641N.1
+   * MAERSK LEON
+   */
+
+  return (
+    compact.length >= 5 &&
+    compact.length <= 30 &&
+    digits >= 2
+  );
+}
+
+
+function looksLikeVesselName(
+  line: string
+) {
+
+  const clean =
+    cleanOCRLine(
+      line
+    );
+
+  const key =
+    normalized(
+      clean
+    );
+
+  if (
+    !clean
+  ) {
+    return false;
+  }
+
+  const letters =
+    (
+      clean.match(
+        /[A-Z]/gi
+      ) ||
+      []
+    ).length;
+
+  if (
+    letters < 3
+  ) {
+    return false;
+  }
+
+  if (
+    /\b(ETA|ETB|ETD|ETS|LOA|DWT|PORT|STBD|SIDE|START|WORK|CUTOFF|ESTMV|FORE|AFBO|BERCO|BOLLARD)\b/.test(
+      key
+    )
+  ) {
+    return false;
+  }
+
+  return (
+    clean.length >= 3 &&
+    clean.length <= 60
+  );
+}
+
+
 function chooseVesselName(
   text: string
 ) {
@@ -1471,10 +1792,71 @@ function chooseVesselName(
       .map(
         compactSpaces
       )
+      .filter(Boolean)
+      .map(
+        cleanOCRLine
+      )
       .filter(Boolean);
 
-  const invalid =
-    /\b(ETA|ETB|ETD|ETS|DWT|LOA|GM|PORT|STARBOARD|INICIO|FIM|START|WORK|SAIDA|BERCO|BOLLARD|TUG|PILOT|PRATIC)\b/i;
+
+  /*
+   * Regra principal do seu Berthing Plan:
+   *
+   * primeira linha = código da viagem
+   * segunda linha = nome do navio
+   */
+
+  if (
+    lines.length >= 2 &&
+    looksLikeVoyageCode(
+      lines[0]
+    ) &&
+    looksLikeVesselName(
+      lines[1]
+    )
+  ) {
+    return lines[1]
+      .toUpperCase();
+  }
+
+
+  /*
+   * Às vezes o OCR coloca algum
+   * código do armador junto da primeira
+   * linha. Ainda assim procuramos o
+   * primeiro nome válido imediatamente
+   * depois de uma linha com viagem.
+   */
+
+  for (
+    let i = 0;
+    i <
+    Math.min(
+      lines.length - 1,
+      5
+    );
+    i++
+  ) {
+
+    if (
+      looksLikeVoyageCode(
+        lines[i]
+      ) &&
+      looksLikeVesselName(
+        lines[i + 1]
+      )
+    ) {
+      return lines[
+        i + 1
+      ].toUpperCase();
+    }
+  }
+
+
+  /*
+   * Fallback caso o OCR tenha perdido
+   * completamente a viagem.
+   */
 
   for (
     const line
@@ -1484,60 +1866,22 @@ function chooseVesselName(
     )
   ) {
 
-    const clean =
-      line
-        .replace(
-          /^[^A-Z0-9]+/i,
-          ''
-        )
-        .replace(
-          /[^A-Z0-9 .\-'/]/gi,
-          ' '
-        )
-        .replace(
-          /\s+/g,
-          ' '
-        )
-        .trim();
-
-    const letters =
-      (
-        clean.match(
-          /[A-Z]/gi
-        ) ||
-        []
-      ).length;
-
-    const digits =
-      (
-        clean.match(
-          /\d/g
-        ) ||
-        []
-      ).length;
-
     if (
-      clean.length >= 3 &&
-      clean.length <= 55 &&
-      letters >= 3 &&
-      digits <=
-        Math.max(
-          2,
-          Math.floor(
-            clean.length /
-            4
-          )
-        ) &&
-      !invalid.test(
-        normalized(clean)
+      looksLikeVesselName(
+        line
+      ) &&
+      !looksLikeVoyageCode(
+        line
       )
     ) {
-      return clean.toUpperCase();
+      return line
+        .toUpperCase();
     }
   }
 
   return '';
 }
+
 
 function nearestBerth(
   box: BBox,
@@ -1548,12 +1892,22 @@ function nearestBerth(
     >
 ) {
 
+  /*
+   * O centro geométrico não funciona
+   * bem porque vários navios ocupam
+   * fisicamente mais de um berço.
+   *
+   * Usamos um ponto a 20% do início
+   * horizontal do bloco.
+   */
+
   const x =
+    box.x0 +
     (
-      box.x0 +
-      box.x1
-    ) /
-    2;
+      box.x1 -
+      box.x0
+    ) *
+    0.20;
 
   let best =
     1;
@@ -1592,6 +1946,7 @@ function nearestBerth(
   return String(best);
 }
 
+
 function candidateFromCard(
   text: string,
   box: BBox,
@@ -1622,10 +1977,17 @@ function candidateFromCard(
     return null;
   }
 
+
+  /*
+   * Se houver Start Work, ele é
+   * preferido ao ETA como início da
+   * operação.
+   */
+
   const preferredStart =
     events.find(
       event =>
-        /ETB|START|WORK|INICIO/.test(
+        /START|WORK|INICIO|ETB/.test(
           event.label
         )
     ) ||
@@ -1636,6 +1998,7 @@ function candidateFromCard(
         )
     ) ||
     events[0];
+
 
   const preferredEnd =
     events.find(
@@ -1654,12 +2017,14 @@ function candidateFromCard(
           preferredStart.stamp
       );
 
+
   const review = [
     'Dados lidos automaticamente por OCR do Berthing Plan. Confira nome, berço e horários antes de salvar.',
   ];
 
+
   if (
-    !/ETB|START|WORK|INICIO/.test(
+    !/START|WORK|INICIO|ETB/.test(
       preferredStart.label
     )
   ) {
@@ -1668,6 +2033,7 @@ function candidateFromCard(
     );
   }
 
+
   if (
     !preferredEnd
   ) {
@@ -1675,6 +2041,7 @@ function candidateFromCard(
       'Fim da operação não identificado automaticamente. Complete antes de importar.'
     );
   }
+
 
   return {
     name,
@@ -1698,16 +2065,17 @@ function candidateFromCard(
     source,
 
     startBasis:
-      /ETB|START|WORK|INICIO/.test(
+      /START|WORK|INICIO|ETB/.test(
         preferredStart.label
       )
         ? preferredStart.label ||
-          'Berthing Plan'
+          'Start Work'
         : 'ETA / Berthing Plan',
 
     review,
   };
 }
+
 
 function uniqueCandidates(
   candidates:
@@ -1751,6 +2119,7 @@ function uniqueCandidates(
   return result;
 }
 
+
 async function createOCRWorker():
 Promise<OCRWorker> {
 
@@ -1770,6 +2139,7 @@ Promise<OCRWorker> {
   return worker;
 }
 
+
 async function parseBerthingPlanImage(
   imageUrl: string,
   source: string,
@@ -1782,6 +2152,13 @@ async function parseBerthingPlanImage(
       imageUrl
     );
 
+
+  /*
+   * Primeiro OCR da imagem inteira.
+   * É usado principalmente para
+   * localizar BERÇO 1, 2, 3 e 4.
+   */
+
   const full =
     await worker.recognize(
       imageUrl,
@@ -1790,6 +2167,7 @@ async function parseBerthingPlanImage(
         blocks: true,
       }
     );
+
 
   const words =
     flattenWords(
@@ -1800,6 +2178,7 @@ async function parseBerthingPlanImage(
         undefined
     );
 
+
   const berthCenters =
     berthCentersFromOCR(
       words,
@@ -1807,14 +2186,22 @@ async function parseBerthingPlanImage(
       image.naturalHeight
     );
 
+
+  /*
+   * Nova detecção baseada nos
+   * retângulos de cor.
+   */
+
   const cards =
     detectPlanCards(
       image
     );
 
+
   const result:
     Candidate[] =
     [];
+
 
   for (
     const card
@@ -1829,10 +2216,12 @@ async function parseBerthingPlanImage(
           card
         );
 
+
       const recognized =
         await worker.recognize(
           crop
         );
+
 
       const candidate =
         candidateFromCard(
@@ -1843,6 +2232,7 @@ async function parseBerthingPlanImage(
           year,
           source
         );
+
 
       if (
         candidate
@@ -1855,121 +2245,18 @@ async function parseBerthingPlanImage(
     } catch {
 
       /*
-       * Um bloco ilegível não impede
-       * a leitura dos demais navios.
+       * Um bloco ilegível não deve
+       * impedir os demais navios.
        */
     }
   }
 
-  if (
-    result.length
-  ) {
-    return uniqueCandidates(
-      result
-    );
-  }
-
-  /*
-   * Fallback caso o layout do plano
-   * seja diferente e os blocos não
-   * sejam detectados.
-   */
-  const fullText =
-    full.data.text ||
-    '';
-
-  const chunks =
-    fullText
-      .split(
-        /\n{2,}/
-      )
-      .map(
-        chunk =>
-          chunk.trim()
-      )
-      .filter(Boolean);
-
-  for (
-    const chunk
-    of chunks
-  ) {
-
-    const events =
-      dateEvents(
-        chunk,
-        year
-      );
-
-    const name =
-      chooseVesselName(
-        chunk
-      );
-
-    if (
-      !name ||
-      !events.length
-    ) {
-      continue;
-    }
-
-    const start =
-      events.find(
-        event =>
-          /ETB|START|WORK|INICIO|ETA/.test(
-            event.label
-          )
-      ) ||
-      events[0];
-
-    const end =
-      events.find(
-        event =>
-          /ETD|ETS|FIM|SAIDA/.test(
-            event.label
-          )
-      ) ||
-      [
-        ...events,
-      ]
-        .reverse()
-        .find(
-          event =>
-            event.stamp >
-            start.stamp
-        );
-
-    result.push({
-      name,
-
-      berth: '',
-
-      start:
-        start.stamp,
-
-      end:
-        end?.stamp ||
-        '',
-
-      note:
-        `Texto reconhecido automaticamente em ${source}.`,
-
-      source,
-
-      startBasis:
-        start.label ||
-        'Berthing Plan',
-
-      review: [
-        'OCR identificou o navio, mas não conseguiu determinar o berço pelo layout. Informe o berço antes de salvar.',
-        'Confira os horários reconhecidos antes de importar.',
-      ],
-    });
-  }
 
   return uniqueCandidates(
     result
   );
 }
+
 
 async function choosePlanImages(
   images:
@@ -1982,6 +2269,7 @@ async function choosePlanImages(
   ) {
     return [];
   }
+
 
   const enriched =
     await Promise.all(
@@ -2008,6 +2296,13 @@ async function choosePlanImages(
       )
     );
 
+
+  /*
+   * Se o próprio anexo possui
+   * Berthing Plan no nome, usamos
+   * diretamente.
+   */
+
   const named =
     enriched.filter(
       image =>
@@ -2016,11 +2311,24 @@ async function choosePlanImages(
         )
     );
 
+
   if (
     named.length
   ) {
     return named;
   }
+
+
+  /*
+   * Em e-mails o anexo pode se chamar
+   * image002.png etc.
+   *
+   * Se o assunto indicar Berthing Plan,
+   * escolhemos apenas imagens grandes.
+   *
+   * Assim assinatura, banner e selo
+   * da praticagem são ignorados.
+   */
 
   if (
     !looksLikePlanSubject(
@@ -2030,48 +2338,48 @@ async function choosePlanImages(
     return [];
   }
 
-  const large =
-    enriched
-      .filter(
-        image =>
-          (
-            image.width ||
-            0
-          ) >= 700 &&
-          (
-            image.height ||
-            0
-          ) >= 450
-      )
-      .sort(
-        (a, b) =>
-          (
-            (
-              b.width ||
-              0
-            ) *
-            (
-              b.height ||
-              0
-            )
-          ) -
-          (
-            (
-              a.width ||
-              0
-            ) *
-            (
-              a.height ||
-              0
-            )
-          )
-      );
 
-  return large.slice(
-    0,
-    2
-  );
+  return enriched
+    .filter(
+      image =>
+        (
+          image.width ||
+          0
+        ) >= 700 &&
+        (
+          image.height ||
+          0
+        ) >= 450
+    )
+    .sort(
+      (a, b) =>
+        (
+          (
+            b.width ||
+            0
+          ) *
+          (
+            b.height ||
+            0
+          )
+        ) -
+        (
+          (
+            a.width ||
+            0
+          ) *
+          (
+            a.height ||
+            0
+          )
+        )
+    )
+    .slice(
+      0,
+      2
+    );
 }
+
 
 export async function parseEmail(
   name: string,
@@ -2088,6 +2396,7 @@ export async function parseEmail(
 
   let directImage =
     false;
+
 
   const addImage = (
     attachmentName:
@@ -2121,6 +2430,7 @@ export async function parseEmail(
     }
   };
 
+
   if (
     /\.msg$/i.test(
       name
@@ -2135,6 +2445,7 @@ export async function parseEmail(
     const data =
       reader.getFileData();
 
+
     if (
       data.error
     ) {
@@ -2143,9 +2454,11 @@ export async function parseEmail(
       );
     }
 
+
     subject =
       data.subject ||
       name;
+
 
     body =
       data.body ||
@@ -2153,6 +2466,7 @@ export async function parseEmail(
         data.bodyHtml ||
         ''
       );
+
 
     for (
       const attachment
@@ -2165,6 +2479,7 @@ export async function parseEmail(
           attachment
         );
 
+
       const attachmentName =
         value.fileName ||
         (
@@ -2172,11 +2487,13 @@ export async function parseEmail(
         ).fileName ||
         'anexo.png';
 
+
       addImage(
         attachmentName,
         value.content
       );
     }
+
 
   } else if (
     /\.eml$/i.test(
@@ -2189,9 +2506,11 @@ export async function parseEmail(
         buffer
       );
 
+
     subject =
       email.subject ||
       name;
+
 
     body =
       email.text ||
@@ -2199,6 +2518,7 @@ export async function parseEmail(
         email.html ||
         ''
       );
+
 
     for (
       const attachment
@@ -2209,9 +2529,11 @@ export async function parseEmail(
       addImage(
         attachment.filename ||
         'anexo.png',
+
         attachment.content
       );
     }
+
 
   } else if (
     /\.(png|jpe?g|webp)$/i.test(
@@ -2225,12 +2547,15 @@ export async function parseEmail(
     directImage =
       true;
 
+
     addImage(
       name,
+
       new Uint8Array(
         buffer
       )
     );
+
 
   } else {
 
@@ -2238,6 +2563,7 @@ export async function parseEmail(
       'Selecione um e-mail (.msg/.eml) ou um Berthing Plan em imagem (.png/.jpg).'
     );
   }
+
 
   const hash =
     Array.from(
@@ -2259,20 +2585,25 @@ export async function parseEmail(
       )
       .join('');
 
+
   const known =
     hash ===
     '3b8d185735dab0dd360288f4c6247f469ca3743d2beca773040c496f94622272';
+
 
   const knownPlan =
     hash ===
     '1b148ca2ff8b5bfa8eb5e51f463e6a8deb8a923dd56d22291d29904cb75ea104';
 
+
   let ships:
     Candidate[] =
     [];
 
+
   let ocrUsed =
     false;
+
 
   if (
     known
@@ -2301,6 +2632,7 @@ export async function parseEmail(
         })
       );
 
+
   } else if (
     knownPlan
   ) {
@@ -2308,7 +2640,13 @@ export async function parseEmail(
     ships =
       plan2809;
 
+
   } else {
+
+    /*
+     * Primeiro tentamos a intenção
+     * de manobra escrita no e-mail.
+     */
 
     ships =
       parseMovements(
@@ -2317,6 +2655,12 @@ export async function parseEmail(
         subject
       );
 
+
+    /*
+     * Depois procuramos um Berthing
+     * Plan em imagem.
+     */
+
     const planImages =
       directImage
         ? images
@@ -2324,6 +2668,7 @@ export async function parseEmail(
             images,
             subject
           );
+
 
     if (
       planImages.length
@@ -2334,14 +2679,17 @@ export async function parseEmail(
         null =
         null;
 
+
       try {
 
         worker =
           await createOCRWorker();
 
+
         const recognized:
           Candidate[] =
           [];
+
 
         for (
           const plan
@@ -2357,10 +2705,12 @@ export async function parseEmail(
               worker
             );
 
+
           recognized.push(
             ...rows
           );
         }
+
 
         if (
           recognized.length
@@ -2369,12 +2719,14 @@ export async function parseEmail(
           ocrUsed =
             true;
 
+
           ships =
             uniqueCandidates([
               ...ships,
               ...recognized,
             ]);
         }
+
 
       } catch (
         error
@@ -2396,6 +2748,7 @@ export async function parseEmail(
           );
         }
 
+
       } finally {
 
         if (
@@ -2407,14 +2760,15 @@ export async function parseEmail(
     }
   }
 
+
   const notice =
     knownPlan
       ?
-        'Berthing Plan 28.09.26 reconhecido. Dados visíveis foram transcritos; revise os horários sinalizados antes de salvar.'
+        'Berthing Plan reconhecido. Confira os horários sinalizados antes de salvar.'
       :
         known
           ?
-            'Arquivo reconhecido: programação revisada anteriormente. Confira os horários estimados.'
+            'Arquivo reconhecido. Confira os horários estimados.'
           :
             ocrUsed
               ?
@@ -2426,9 +2780,10 @@ export async function parseEmail(
                   :
                     images.length
                       ?
-                        'Imagem carregada, mas nenhum navio foi identificado automaticamente. Use uma imagem do Berthing Plan em resolução original ou adicione os navios manualmente.'
+                        'Imagem carregada, mas nenhum navio foi identificado automaticamente.'
                       :
                         'Nenhum navio foi identificado neste arquivo.';
+
 
   return {
     file:
