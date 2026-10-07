@@ -1,7 +1,7 @@
 'use client';
 import {useState} from 'react';
 import {Ship,norm} from './domain';
-import {parseEmail,type Candidate,type EmailPreview} from './email-parser';
+import type {Candidate,EmailPreview} from './email-parser';
 type Row=Candidate&{selected:boolean;existingId?:string;status?:string};
 export default function EmailImporter({ships,busy,onSave}:{ships:Ship[];busy:boolean;onSave:(rows:Row[])=>void}){
  const [files,setFiles]=useState<EmailPreview[]>([]),[rows,setRows]=useState<Row[]>([]),[loading,setLoading]=useState(false),[error,setError]=useState(''),[year,setYear]=useState(new Date().getFullYear());
