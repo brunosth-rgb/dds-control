@@ -13,12 +13,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@kenjiuno/msgreader-web-ng": "0.2.0-alpha1",
     "firebase": "^12.19.0",
     "lucide-react": "^1.31.0",
     "postal-mime": "^4.0.2",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "@kenjiuno/msgreader-web-ng": "0.2.0-alpha1"
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.2",
