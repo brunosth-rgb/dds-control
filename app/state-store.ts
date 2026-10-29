@@ -1,4 +1,4 @@
-import { doc, runTransaction } from 'firebase/firestore';
+import {doc,runTransaction} from 'firebase/firestore';
 
 import seed from './seed.json';
 
@@ -12,935 +12,582 @@ import {
   validateSettings,
   periodsFor,
   validRecord,
+  isOperationsRecord
 } from './domain';
 
 import {
   mapRecord,
   mergeRecords,
-  type Mapping,
+  type Mapping
 } from './hashdata-map';
 
 import {
   currentUser,
-  requireDb,
+  requireDb
 } from './firebase-client';
 
-
-export type HashdataInfo = {
-  mapping?: Mapping;
-  lastSuccess?: string;
-  added?: number;
-  updated?: number;
-  total?: number;
-  review?: number;
-  auto?: boolean;
+export type HashdataInfo={
+  mapping?:Mapping;
+  lastSuccess?:string;
+  added?:number;
+  updated?:number;
+  total?:number;
+  review?:number;
+  auto?:boolean;
 };
 
-
-export type ExtendedState = State & {
-  hashdata?: HashdataInfo;
+export type ExtendedState=State&{
+  hashdata?:HashdataInfo;
 };
 
-
-export type WorkspaceResult = {
-  state: ExtendedState;
-  revision: number;
+export type WorkspaceResult={
+  state:ExtendedState;
+  revision:number;
 };
 
-
-type WorkspaceDocument = {
-  state: ExtendedState;
-  revision: number;
-  updatedAt: string;
+type WorkspaceDocument={
+  state:ExtendedState;
+  revision:number;
+  updatedAt:string;
 };
 
+const workspaceRef=()=>doc(requireDb(),'ddsControl','main');
 
-const workspaceRef = () =>
-  doc(requireDb(), 'ddsControl', 'main');
+const clean=<T,>(value:T):T=>JSON.parse(JSON.stringify(value));
 
+const cloneSeed=():ExtendedState=>clean(seed) as ExtendedState;
 
-const clean = <T,>(value: T): T =>
-  JSON.parse(JSON.stringify(value));
+export async function loadWorkspace():Promise<WorkspaceResult>{
+  const db=requireDb();
+  const ref=workspaceRef();
 
+  return runTransaction(db,async tx=>{
+    const user=currentUser();
 
-const cloneSeed = (): ExtendedState =>
-  clean(seed) as ExtendedState;
-
-
-export async function loadWorkspace(): Promise<WorkspaceResult> {
-  const db = requireDb();
-  const ref = workspaceRef();
-
-  return runTransaction(db, async (tx) => {
-    const user = currentUser();
-
-    const accessRef = doc(
+    const accessRef=doc(
       db,
       'ddsUsers',
       user.uid
     );
 
-    const access = await tx.get(accessRef);
+    const access=await tx.get(accessRef);
 
-    if (
-      !access.exists() ||
-      access.data()?.active !== true
-    ) {
-      throw new Error(
-        'Sua conta está autenticada, mas ainda não foi autorizada para o DDS Control.'
-      );
+    if(!access.exists()||access.data()?.active!==true){
+      throw new Error('Sua conta está autenticada, mas ainda não foi autorizada para o DDS Control.');
     }
 
-    const snap = await tx.get(ref);
+    const snap=await tx.get(ref);
 
-    if (!snap.exists()) {
-      const state = cloneSeed();
+    if(!snap.exists()){
+      const state=cloneSeed();
 
-      const initialDocument: WorkspaceDocument = {
+      const initialDocument:WorkspaceDocument={
         state,
-        revision: 1,
-        updatedAt: state.updated,
+        revision:1,
+        updatedAt:state.updated
       };
 
-      tx.set(ref, initialDocument);
+      tx.set(ref,initialDocument);
 
       return {
         state,
-        revision: 1,
+        revision:1
       };
     }
 
-    const row = snap.data() as WorkspaceDocument;
+    const row=snap.data() as WorkspaceDocument;
 
-    if (
-      !row?.state ||
-      !Number.isInteger(row.revision)
-    ) {
-      throw new Error(
-        'Estrutura de dados inválida no Firestore.'
-      );
+    if(!row?.state||!Number.isInteger(row.revision)){
+      throw new Error('Estrutura de dados inválida no Firestore.');
     }
 
     return {
-      state: clean(row.state),
-      revision: row.revision,
+      state:clean(row.state),
+      revision:row.revision
     };
   });
 }
 
-
 function mutateState(
-  current: ExtendedState,
-  body: any,
-  user: string
-): ExtendedState {
-  const s = clean(current);
-  const at = localNow();
+  current:ExtendedState,
+  body:any,
+  user:string
+):ExtendedState{
+  const s=clean(current);
+  const at=localNow();
+  let detail='';
 
-  let detail = '';
+  const str=(value:unknown,max=4000):string=>
+    typeof value==='string'
+      ?value.trim().slice(0,max)
+      :'';
 
-  const str = (
-    value: unknown,
-    max = 4000
-  ): string =>
-    typeof value === 'string'
-      ? value.trim().slice(0, max)
-      : '';
-
-
-  if (body.action === 'import-files') {
-    if (
-      !Array.isArray(body.ships) ||
-      !body.ships.length ||
-      body.ships.length > 100
-    ) {
-      throw new Error(
-        'Selecione entre 1 e 100 navios.'
-      );
+  if(body.action==='import-files'){
+    if(!Array.isArray(body.ships)||!body.ships.length||body.ships.length>100){
+      throw new Error('Selecione entre 1 e 100 navios.');
     }
 
-    let added = 0;
-    let updated = 0;
-    let skipped = 0;
+    let added=0;
+    let updated=0;
+    let skipped=0;
+    const changes:string[]=[];
 
-    const changes: string[] = [];
+    for(const p of body.ships){
+      const name=str(p.name,120);
+      const berth=str(p.berth,60);
+      const start=str(p.start,19);
+      const end=str(p.end,19);
 
-    for (const p of body.ships) {
-      const name = str(p.name, 120);
-      const berth = str(p.berth, 60);
-      const start = str(p.start, 19);
-      const end = str(p.end, 19);
-
-      if (
-        !name ||
-        !berth ||
-        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(start) ||
-        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(end) ||
-        !Number.isFinite(Date.parse(start)) ||
-        !Number.isFinite(Date.parse(end)) ||
-        end <= start
-      ) {
-        throw new Error(
-          'Complete a janela de operação de ' +
-            name +
-            '.'
-        );
+      if(
+        !name||
+        !berth||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(start)||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(end)||
+        !Number.isFinite(Date.parse(start))||
+        !Number.isFinite(Date.parse(end))||
+        end<=start
+      ){
+        throw new Error('Complete a janela de operação de '+name+'.');
       }
 
-      const old = p.existingId
-        ? s.ships.find(
-            (v) =>
-              v.id === p.existingId &&
-              !v.deleted &&
-              v.status === 'Ativo'
-          )
-        : undefined;
+      const old=p.existingId
+        ?s.ships.find(v=>
+          v.id===p.existingId&&
+          !v.deleted&&
+          v.status==='Ativo'
+        )
+        :undefined;
 
-      if (
-        p.existingId &&
-        !old
-      ) {
-        throw new Error(
-          'A operação mudou. Selecione o arquivo novamente.'
-        );
+      if(p.existingId&&!old){
+        throw new Error('A operação mudou. Selecione o arquivo novamente.');
       }
 
-      if (
-        old &&
-        norm(old.name) !== norm(name)
-      ) {
-        throw new Error(
-          'Para renomear um navio existente, use Gerenciar.'
-        );
+      if(old&&norm(old.name)!==norm(name)){
+        throw new Error('Para renomear um navio existente, use Gerenciar.');
       }
 
-      const overlap = s.ships.find(
-        (v) =>
-          v.id !== old?.id &&
-          !v.deleted &&
-          v.status !== 'Cancelado' &&
-          norm(v.name) === norm(name) &&
-          v.start < end &&
-          (v.actualEnd || v.end) > start
+      const overlap=s.ships.find(v=>
+        v.id!==old?.id&&
+        !v.deleted&&
+        v.status!=='Cancelado'&&
+        norm(v.name)===norm(name)&&
+        v.start<end&&
+        (v.actualEnd||v.end)>start
       );
 
-      if (overlap) {
-        if (
-          overlap.start.slice(0, 16) === start &&
-          overlap.end.slice(0, 16) === end &&
-          overlap.berth === berth
-        ) {
+      if(overlap){
+        if(
+          overlap.start.slice(0,16)===start&&
+          overlap.end.slice(0,16)===end&&
+          overlap.berth===berth
+        ){
           skipped++;
           continue;
         }
 
-        throw new Error(
-          'Há uma operação sobreposta de ' +
-            name +
-            '. Reabra a importação para revisar.'
-        );
+        throw new Error('Há uma operação sobreposta de '+name+'. Reabra a importação para revisar.');
       }
 
-      const vessel = {
+      const vessel={
         ...old,
-
-        id:
-          old?.id ||
-          crypto.randomUUID(),
-
+        id:old?.id||crypto.randomUUID(),
         name,
         berth,
         start,
         end,
-
-        status: 'Ativo',
-
-        source: str(p.source, 300),
-        note: str(p.note),
-        startBasis: str(p.startBasis, 100),
-
-        review: Array.isArray(p.review)
-          ? p.review
-              .slice(0, 10)
-              .map((x: unknown) =>
-                str(x, 500)
-              )
-          : [],
+        status:'Ativo',
+        source:str(p.source,300),
+        note:str(p.note),
+        startBasis:str(p.startBasis,100),
+        review:Array.isArray(p.review)
+          ?p.review.slice(0,10).map((x:unknown)=>str(x,500))
+          :[]
       };
 
-      if (old) {
-        s.ships = s.ships.map(
-          (x) =>
-            x.id === old.id
-              ? vessel
-              : x
-        );
-
+      if(old){
+        s.ships=s.ships.map(x=>x.id===old.id?vessel:x);
         updated++;
-
         changes.push(
-          name +
-            ': ' +
-            old.start +
-            ' / ' +
-            old.end +
-            ' → ' +
-            start +
-            ' / ' +
-            end
+          name+': '+old.start+' / '+old.end+' → '+start+' / '+end
         );
-      } else {
+      }else{
         s.ships.push(vessel);
-
         added++;
-
-        changes.push(
-          name +
-            ': ' +
-            start +
-            ' / ' +
-            end
-        );
+        changes.push(name+': '+start+' / '+end);
       }
     }
 
-    detail =
-      `Importação de arquivo: ${added} novos, ` +
-      `${updated} atualizados, ` +
-      `${skipped} já cadastrados. ` +
+    detail=
+      `Importação de arquivo: ${added} novos, `+
+      `${updated} atualizados, `+
+      `${skipped} já cadastrados. `+
       changes.join('; ');
   }
 
+  else if(body.action==='ship'){
+    const p=body.ship;
+    const name=str(p.name,120);
+    const berth=str(p.berth,60);
+    const start=str(p.start,19);
+    const end=str(p.end,19);
 
-  else if (body.action === 'ship') {
-    const p = body.ship;
-
-    const name = str(p.name, 120);
-    const berth = str(p.berth, 60);
-    const start = str(p.start, 19);
-    const end = str(p.end, 19);
-
-    if (
-      !name ||
-      !berth ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(start) ||
-      !Number.isFinite(Date.parse(start)) ||
-      !Number.isFinite(Date.parse(end)) ||
-      end <= start
-    ) {
-      throw new Error(
-        'Preencha nome, berço e uma janela válida.'
-      );
+    if(
+      !name||
+      !berth||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(start)||
+      !Number.isFinite(Date.parse(start))||
+      !Number.isFinite(Date.parse(end))||
+      end<=start
+    ){
+      throw new Error('Preencha nome, berço e uma janela válida.');
     }
 
-    const old = s.ships.find(
-      (x) => x.id === p.id
+    const old=s.ships.find(x=>x.id===p.id);
+
+    const duplicated=s.ships.some(x=>
+      x.id!==p.id&&
+      !x.deleted&&
+      x.status!=='Cancelado'&&
+      x.name.toUpperCase()===name.toUpperCase()&&
+      x.start<end&&
+      (x.actualEnd||x.end)>start
     );
 
-    const duplicated = s.ships.some(
-      (x) =>
-        x.id !== p.id &&
-        !x.deleted &&
-        x.status !== 'Cancelado' &&
-        x.name.toUpperCase() ===
-          name.toUpperCase() &&
-        x.start < end &&
-        (x.actualEnd || x.end) > start
-    );
-
-    if (duplicated) {
-      throw new Error(
-        'Já existe uma operação desse navio nesse intervalo.'
-      );
+    if(duplicated){
+      throw new Error('Já existe uma operação desse navio nesse intervalo.');
     }
 
-    if (
-      old &&
-      old.status !== 'Ativo'
-    ) {
-      throw new Error(
-        'Esta operação já foi encerrada.'
-      );
+    if(old&&old.status!=='Ativo'){
+      throw new Error('Esta operação já foi encerrada.');
     }
 
-    const vessel = {
+    const vessel={
       ...old,
-
-      id:
-        old?.id ||
-        crypto.randomUUID(),
-
+      id:old?.id||crypto.randomUUID(),
       name,
       berth,
       start,
       end,
-
-      note: str(p.note),
-
-      status: 'Ativo',
+      note:str(p.note),
+      status:'Ativo'
     };
 
-    s.ships = old
-      ? s.ships.map(
-          (x) =>
-            x.id === vessel.id
-              ? vessel
-              : x
-        )
-      : [
-          ...s.ships,
-          vessel,
-        ];
+    s.ships=old
+      ?s.ships.map(x=>x.id===vessel.id?vessel:x)
+      :[...s.ships,vessel];
 
-    detail = old
-      ? `${name}: ${old.start} / ${old.end} → ${start} / ${end}; berço ${old.berth} → ${berth}`
-      : `${name}; berço ${berth}; ${start} / ${end}`;
+    detail=old
+      ?`${name}: ${old.start} / ${old.end} → ${start} / ${end}; berço ${old.berth} → ${berth}`
+      :`${name}; berço ${berth}; ${start} / ${end}`;
   }
 
+  else if(['finish','cancel','delete'].includes(body.action)){
+    const vessel=s.ships.find(x=>x.id===body.id);
 
-  else if (
-    [
-      'finish',
-      'cancel',
-      'delete',
-    ].includes(body.action)
-  ) {
-    const vessel = s.ships.find(
-      (x) =>
-        x.id === body.id
-    );
-
-    if (!vessel) {
-      throw new Error(
-        'Navio não encontrado.'
-      );
+    if(!vessel){
+      throw new Error('Navio não encontrado.');
     }
 
-    if (
-      body.action === 'finish'
-    ) {
-      if (
-        vessel.status !== 'Ativo' ||
-        vessel.start > at
-      ) {
-        throw new Error(
-          'A operação ainda não começou ou já foi encerrada.'
-        );
+    if(body.action==='finish'){
+      if(vessel.status!=='Ativo'||vessel.start>at){
+        throw new Error('A operação ainda não começou ou já foi encerrada.');
       }
 
-      vessel.actualEnd = at;
-      vessel.status = 'Finalizado';
+      vessel.actualEnd=at;
+      vessel.status='Finalizado';
     }
 
-    if (
-      body.action === 'cancel'
-    ) {
-      vessel.status = 'Cancelado';
+    if(body.action==='cancel'){
+      vessel.status='Cancelado';
     }
 
-    if (
-      body.action === 'delete'
-    ) {
-      vessel.deleted = true;
+    if(body.action==='delete'){
+      vessel.deleted=true;
     }
 
-    const actionLabel: Record<string, string> = {
-      finish: 'Finalizado agora',
-      cancel: 'Operação cancelada',
-      delete:
-        'Cadastro excluído; histórico preservado',
+    const actionLabel:Record<string,string>={
+      finish:'Finalizado agora',
+      cancel:'Operação cancelada',
+      delete:'Cadastro excluído; histórico preservado'
     };
 
-    detail =
-      vessel.name +
-      ' - ' +
-      actionLabel[body.action];
+    detail=vessel.name+' - '+actionLabel[body.action];
   }
 
-
-  else if (
-    body.action === 'settings'
-  ) {
-    const before =
-      JSON.stringify(s.settings);
-
-    s.settings =
-      validateSettings(
-        body.settings
-      );
-
-    detail =
-      'Configurações: ' +
-      before +
-      ' → ' +
-      JSON.stringify(
-        s.settings
-      );
+  else if(body.action==='settings'){
+    const before=JSON.stringify(s.settings);
+    s.settings=validateSettings(body.settings);
+    detail='Configurações: '+before+' → '+JSON.stringify(s.settings);
   }
 
+  else if(body.action==='record'){
+    const r=body.record;
+    const id=str(r.id,100)||crypto.randomUUID();
 
-  else if (
-    body.action === 'record'
-  ) {
-    const r = body.record;
-
-    const id =
-      str(r.id, 100) ||
-      crypto.randomUUID();
-
-    if (
-      !TYPES.includes(r.type) ||
-      !typePeriodsForDate(
-        r.type,
-        r.date,
-        s.settings
-      ).includes(r.period) ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(r.date) ||
-      !Number.isFinite(
-        Date.parse(r.applied)
-      ) ||
-      (
-        r.type === 'NAVIO' &&
-        !str(r.ship)
-      )
-    ) {
-      throw new Error(
-        'Informe tipo, período, data, horário e navio quando necessário.'
-      );
+    if(
+      !TYPES.includes(r.type)||
+      !typePeriodsForDate(r.type,r.date,s.settings).includes(r.period)||
+      !/^\d{4}-\d{2}-\d{2}$/.test(r.date)||
+      !Number.isFinite(Date.parse(r.applied))||
+      (r.type==='NAVIO'&&!str(r.ship))
+    ){
+      throw new Error('Informe tipo, período, data, horário e navio quando necessário.');
     }
 
-    const record = {
+    const record={
       id,
-
-      type: r.type,
-
-      ship:
-        str(
-          r.ship,
-          120
-        ),
-
-      date: r.date,
-      period: r.period,
-
-      applied:
-        str(
-          r.applied,
-          19
-        ),
-
-      applicator:
-        str(
-          r.applicator,
-          120
-        ),
-
-      supervisor:
-        str(
-          r.supervisor,
-          120
-        ),
-
-      participants:
-        str(
-          r.participants
-        ),
-
-      topics:
-        str(
-          r.topics
-        ),
-
-      photo:
-        !!r.photo,
-
-      signature:
-        !!r.signature,
-
-      source:
-        'Registro manual',
+      sector:str(r.sector,120)||'Operações',
+      type:r.type,
+      ship:str(r.ship,120),
+      date:r.date,
+      period:r.period,
+      applied:str(r.applied,19),
+      applicator:str(r.applicator,120),
+      supervisor:str(r.supervisor,120),
+      participants:str(r.participants),
+      topics:str(r.topics),
+      photo:!!r.photo,
+      signature:!!r.signature,
+      source:'Registro manual'
     };
 
-    s.records =
-      s.records
-        .filter(
-          (x) =>
-            x.id !== id
-        )
-        .concat(record);
+    s.records=s.records
+      .filter(x=>x.id!==id)
+      .concat(record);
 
-    detail =
-      `${record.type} ${record.ship} • ` +
-      `${record.date} ${record.period}`;
+    detail=`${record.type} ${record.ship} • ${record.date} ${record.period}`;
   }
 
+  else if(body.action==='clear-history'){
+    const removed=s.records.length;
+    const removedJustifications=s.justifications.length;
 
-  else if (
-    body.action ===
-    'cleanup-test-data'
-  ) {
-    const before =
-      s.records.length;
+    s.records=[];
+    s.justifications=[];
 
-    s.records =
-      s.records.filter(
-        (r) =>
-          !/^Excel de teste(?:\s*•|$)/i.test(
-            r.source || ''
-          ) &&
-          (
-            r.source || ''
-          ) !==
-            'Registro manual de teste'
-      );
-
-    const removed =
-      before -
-      s.records.length;
-
-    s.audit =
-      s.audit.filter(
-        (a) =>
-          a.action !==
-            'import-hashdata-tests' &&
-          !/Excel de teste/i.test(
-            a.detail || ''
-          )
-      );
-
-    detail =
-      `Limpeza de produção: ${removed} registro(s) legado(s) de teste removido(s).`;
-  }
-
-
-  else if (
-    body.action === 'justify'
-  ) {
-    const [
-      date,
-      period,
-    ] =
-      str(body.key).split('|');
-
-    if (
-      !periodsFor(
-        s.settings
-      ).includes(period)
-    ) {
-      throw new Error(
-        'Período inválido.'
-      );
+    if(s.hashdata){
+      s.hashdata={
+        ...s.hashdata,
+        added:0,
+        updated:0,
+        total:0,
+        review:0
+      };
     }
 
-    const periodIndex =
-      periodsFor(
-        s.settings
-      ).indexOf(period);
-
-    const item =
-      obligations(
-        s,
-        date,
-        periodIndex
-      ).find(
-        (x) =>
-          x.key === body.key
-      );
-
-    if (
-      !item ||
-      item.record
-    ) {
-      throw new Error(
-        'Obrigação não disponível para justificativa.'
-      );
-    }
-
-    const reason =
-      str(
-        body.reason,
-        1000
-      );
-
-    if (
-      reason.length < 5
-    ) {
-      throw new Error(
-        'Descreva o motivo da justificativa.'
-      );
-    }
-
-    s.justifications =
-      s.justifications
-        .filter(
-          (x) =>
-            x.key !== body.key
-        )
-        .concat({
-          key: body.key,
-          reason,
-          at,
-        });
-
-    detail =
-      `${item.reference} ${date} ${period}: ${reason}`;
+    detail=
+      `Histórico limpo: ${removed} registro(s) DDS e `+
+      `${removedJustifications} justificativa(s) removidos.`;
   }
 
+  else if(body.action==='cleanup-test-data'){
+    const before=s.records.length;
 
-  else if (
-    body.action === 'unjustify'
-  ) {
-    s.justifications =
-      s.justifications.filter(
-        (x) =>
-          x.key !== body.key
-      );
-
-    detail =
-      'Justificativa removida: ' +
-      str(body.key);
-  }
-
-
-  else {
-    throw new Error(
-      'Ação não reconhecida.'
+    s.records=s.records.filter(r=>
+      !/^Excel de teste(?:\s*•|$)/i.test(r.source||'')&&
+      (r.source||'')!=='Registro manual de teste'
     );
+
+    const removed=before-s.records.length;
+
+    s.audit=s.audit.filter(a=>
+      a.action!=='import-hashdata-tests'&&
+      !/Excel de teste/i.test(a.detail||'')
+    );
+
+    detail=`Limpeza de produção: ${removed} registro(s) legado(s) de teste removido(s).`;
   }
 
+  else if(body.action==='justify'){
+    const [date,period]=str(body.key).split('|');
 
-  s.updated = at;
+    if(!periodsFor(s.settings).includes(period)){
+      throw new Error('Período inválido.');
+    }
+
+    const periodIndex=periodsFor(s.settings).indexOf(period);
+
+    const item=obligations(
+      s,
+      date,
+      periodIndex
+    ).find(x=>x.key===body.key);
+
+    if(!item||item.record){
+      throw new Error('Obrigação não disponível para justificativa.');
+    }
+
+    const reason=str(body.reason,1000);
+
+    if(reason.length<5){
+      throw new Error('Descreva o motivo da justificativa.');
+    }
+
+    s.justifications=s.justifications
+      .filter(x=>x.key!==body.key)
+      .concat({
+        key:body.key,
+        reason,
+        at
+      });
+
+    detail=`${item.reference} ${date} ${period}: ${reason}`;
+  }
+
+  else if(body.action==='unjustify'){
+    s.justifications=s.justifications.filter(x=>x.key!==body.key);
+    detail='Justificativa removida: '+str(body.key);
+  }
+
+  else{
+    throw new Error('Ação não reconhecida.');
+  }
+
+  s.updated=at;
 
   s.audit.unshift({
     at,
-    action: body.action,
+    action:body.action,
     detail,
-    user,
+    user
   });
 
   return clean(s);
 }
 
-
 async function updateWorkspace(
-  expectedRevision: number,
-  mutator: (
-    state: ExtendedState
-  ) => ExtendedState
-): Promise<WorkspaceResult> {
-  const db = requireDb();
-  const ref = workspaceRef();
+  expectedRevision:number,
+  mutator:(state:ExtendedState)=>ExtendedState
+):Promise<WorkspaceResult>{
+  const db=requireDb();
+  const ref=workspaceRef();
 
-  return runTransaction(
-    db,
-    async (tx) => {
-      const snap =
-        await tx.get(ref);
+  return runTransaction(db,async tx=>{
+    const snap=await tx.get(ref);
 
-      if (!snap.exists()) {
-        throw new Error(
-          'Dados ainda não inicializados. Atualize a página.'
-        );
-      }
-
-      const row =
-        snap.data() as WorkspaceDocument;
-
-      if (
-        row.revision !==
-        expectedRevision
-      ) {
-        throw new Error(
-          'Os dados mudaram em outra aba ou computador. Atualize a página antes de salvar.'
-        );
-      }
-
-      const state =
-        clean(
-          mutator(
-            clean(row.state)
-          )
-        );
-
-      const revision =
-        row.revision + 1;
-
-      const nextDocument: WorkspaceDocument = {
-        state,
-        revision,
-        updatedAt: state.updated,
-      };
-
-      tx.set(
-        ref,
-        nextDocument
-      );
-
-      return {
-        state,
-        revision,
-      };
+    if(!snap.exists()){
+      throw new Error('Dados ainda não inicializados. Atualize a página.');
     }
-  );
-}
 
+    const row=snap.data() as WorkspaceDocument;
+
+    if(row.revision!==expectedRevision){
+      throw new Error('Os dados mudaram em outra aba ou computador. Atualize a página antes de salvar.');
+    }
+
+    const state=clean(mutator(clean(row.state)));
+    const revision=row.revision+1;
+
+    const nextDocument:WorkspaceDocument={
+      state,
+      revision,
+      updatedAt:state.updated
+    };
+
+    tx.set(ref,nextDocument);
+
+    return {
+      state,
+      revision
+    };
+  });
+}
 
 export async function saveWorkspaceAction(
-  body: any,
-  revision: number,
-  user: string
-): Promise<WorkspaceResult> {
+  body:any,
+  revision:number,
+  user:string
+):Promise<WorkspaceResult>{
   return updateWorkspace(
     revision,
-    (state) =>
-      mutateState(
-        state,
-        body,
-        user
-      )
+    state=>mutateState(state,body,user)
   );
 }
 
-
 export async function saveHashdataSync(
-  rows:
-    Record<
-      string,
-      unknown
-    >[],
-  mapping: Mapping,
-  auto: boolean,
-  revision: number,
-  user: string
-): Promise<
-  WorkspaceResult & {
-    summary: HashdataInfo;
-  }
-> {
-  for (
-    const required of [
-      'applied',
-      'period',
-      'type',
-    ] as const
-  ) {
-    if (
-      typeof mapping?.[
-        required
-      ] !== 'string' ||
-      !mapping[required]
-    ) {
-      throw new Error(
-        'Confira os campos de data, período e tipo antes de importar.'
-      );
+  rows:Record<string,unknown>[],
+  mapping:Mapping,
+  auto:boolean,
+  revision:number,
+  user:string
+):Promise<WorkspaceResult&{summary:HashdataInfo}>{
+  for(const required of ['applied','period','type'] as const){
+    if(typeof mapping?.[required]!=='string'||!mapping[required]){
+      throw new Error('Confira os campos de data, período e tipo antes de importar.');
     }
   }
 
-  let summary:
-    HashdataInfo = {};
+  let summary:HashdataInfo={};
 
-  const result =
-    await updateWorkspace(
-      revision,
-      (state) => {
-        const incoming = [];
+  const result=await updateWorkspace(
+    revision,
+    state=>{
+      const incoming=[];
+      const rejected:{id:string;reason:string}[]=[];
 
-        const rejected: {
-          id: string;
-          reason: string;
-        }[] = [];
-
-        for (
-          const row of rows
-        ) {
-          try {
-            incoming.push(
-              mapRecord(
-                row,
-                mapping
-              )
-            );
-          } catch (error) {
-            rejected.push({
-              id:
-                String(
-                  row.col_id ||
-                    ''
-                ),
-
-              reason:
-                error instanceof Error
-                  ? error.message
-                  : 'Registro inválido',
-            });
-          }
+      for(const row of rows){
+        try{
+          incoming.push(mapRecord(row,mapping));
+        }catch(error){
+          rejected.push({
+            id:String(row.col_id||''),
+            reason:error instanceof Error?error.message:'Registro inválido'
+          });
         }
-
-        if (
-          rejected.length
-        ) {
-          throw new Error(
-            `${rejected.length} registros têm data inválida ou ID ausente. ` +
-            'Confira o campo da aplicação. Nenhuma alteração foi salva.'
-          );
-        }
-
-        const merged =
-          mergeRecords(
-            state.records,
-            incoming
-          );
-
-        state.records =
-          merged.records;
-
-        const review =
-          incoming.filter(
-            (r) =>
-              !validRecord(
-                r,
-                state.settings
-              )
-          ).length;
-
-        const at =
-          localNow();
-
-        summary = {
-          mapping,
-          lastSuccess: at,
-          added: merged.added,
-          updated: merged.updated,
-          total: rows.length,
-          review,
-          auto,
-        };
-
-        state.hashdata =
-          summary;
-
-        state.updated =
-          at;
-
-        state.audit.unshift({
-          at,
-          action:
-            'hashdata-sync',
-          user,
-
-          detail:
-            `Hashdata: ${merged.added} novos, ` +
-            `${merged.updated} atualizados, ` +
-            `${review} para revisão. ` +
-            'Janela de 30 dias.',
-        });
-
-        return state;
       }
-    );
+
+      if(rejected.length){
+        throw new Error(
+          `${rejected.length} registros têm data inválida ou ID ausente. `+
+          'Confira o campo da aplicação. Nenhuma alteração foi salva.'
+        );
+      }
+
+      const merged=mergeRecords(
+        state.records,
+        incoming
+      );
+
+      state.records=merged.records;
+
+      const operationalIncoming=incoming.filter(isOperationsRecord);
+
+      const review=operationalIncoming.filter(
+        r=>!validRecord(r,state.settings)
+      ).length;
+
+      const at=localNow();
+
+      summary={
+        mapping,
+        lastSuccess:at,
+        added:merged.added,
+        updated:merged.updated,
+        total:operationalIncoming.length,
+        review,
+        auto
+      };
+
+      state.hashdata=summary;
+      state.updated=at;
+
+      state.audit.unshift({
+        at,
+        action:'hashdata-sync',
+        user,
+        detail:
+          `Hashdata: ${merged.added} novos, `+
+          `${merged.updated} atualizados, `+
+          `${operationalIncoming.length} do setor Operações, `+
+          `${review} para revisão. Janela de 30 dias.`
+      });
+
+      return state;
+    }
+  );
 
   return {
     ...result,
-    summary,
+    summary
   };
 }

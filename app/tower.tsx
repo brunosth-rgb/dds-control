@@ -31,7 +31,8 @@ import {
   DoorOpen,
   Snowflake,
   Warehouse,
-  Upload
+  Upload,
+  Trash2
 } from 'lucide-react';
 
 import {
@@ -55,18 +56,14 @@ import {
   issues,
   validRecord,
   reviewReasons,
+  isOperationsRecord,
   epoch,
   norm
 } from './domain';
 
-import EmailImporter
-  from './email-importer';
-
-import HashdataPanel
-  from './hashdata-panel';
-
-import RulesEditor
-  from './rules-editor';
+import EmailImporter from './email-importer';
+import HashdataPanel from './hashdata-panel';
+import RulesEditor from './rules-editor';
 
 import {
   AdherenceView,
@@ -92,32 +89,22 @@ const menus=[
   ['CONFIGURAÇÕES',Settings]
 ] as const;
 
-const statusClass=
-  (s:string)=>
-    s==='Realizado'
-      ?'success'
-      :s==='Realizado com pendência'
-        ?'incomplete'
-        :s==='Atrasado'
-          ?'danger'
-          :s==='Aguardando'
-            ?'warning'
-            :s==='Justificado'
-              ?'justified'
-              :'neutral';
+const statusClass=(s:string)=>
+  s==='Realizado'
+    ?'success'
+    :s==='Realizado com pendência'
+      ?'incomplete'
+      :s==='Atrasado'
+        ?'danger'
+        :s==='Aguardando'
+          ?'warning'
+          :s==='Justificado'
+            ?'justified'
+            :'neutral';
 
-function Badge({
-  text
-}:{
-  text:string
-}){
+function Badge({text}:{text:string}){
   return (
-    <span
-      className={
-        'badge '+
-        statusClass(text)
-      }
-    >
+    <span className={'badge '+statusClass(text)}>
       <i/>
       {text}
     </span>
@@ -131,35 +118,20 @@ function Panel({
   className=''
 }:any){
   return (
-    <section
-      className={
-        'panel '+
-        className
-      }
-    >
+    <section className={'panel '+className}>
       <div className="panel-head">
-        <h2>
-          {title}
-        </h2>
-
+        <h2>{title}</h2>
         {extra}
       </div>
-
       {children}
     </section>
   );
 }
 
-function Field({
-  label,
-  children
-}:any){
+function Field({label,children}:any){
   return (
     <label className="field">
-      <span>
-        {label}
-      </span>
-
+      <span>{label}</span>
       {children}
     </label>
   );
@@ -170,30 +142,16 @@ function Modal({
   close,
   children
 }:any){
+  const ref=useRef<HTMLDialogElement>(null);
 
-  const ref=
-    useRef<HTMLDialogElement>(
-      null
-    );
-
-  useEffect(
-    ()=>{
-      ref.current?.showModal();
-    },
-    []
-  );
+  useEffect(()=>{
+    ref.current?.showModal();
+  },[]);
 
   return (
-    <dialog
-      ref={ref}
-      onCancel={close}
-    >
-
+    <dialog ref={ref} onCancel={close}>
       <div className="modal-head">
-
-        <h2>
-          {title}
-        </h2>
+        <h2>{title}</h2>
 
         <button
           className="icon-button"
@@ -202,458 +160,206 @@ function Modal({
         >
           <X size={20}/>
         </button>
-
       </div>
 
       {children}
-
     </dialog>
   );
 }
 
 export default function Tower(){
+  const [s,setS]=useState<State|null>(null);
+  const [rev,setRev]=useState(0);
+  const [user,setUser]=useState('');
+  const [view,setView]=useState('HOJE');
+  const [date,setDate]=useState('2026-09-29');
+  const [period,setPeriod]=useState(2);
+  const [now,setNow]=useState(Date.now());
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const [notice,setNotice]=useState('');
+  const [modal,setModal]=useState<any>(null);
+  const [q,setQ]=useState('');
+  const [type,setType]=useState('Todos');
+  const [shipTab,setShipTab]=useState('Todos');
+  const [theme,setTheme]=useState('dark');
+  const [recordType,setRecordType]=useState('CAM');
+  const [recordDate,setRecordDate]=useState('2026-09-29');
 
-  const [
-    s,
-    setS
-  ]=
-    useState<State|null>(
-      null
+  const cfg=config(s?.settings);
+  const PERIODS=cfg.core;
+  const WORK_PERIODS=cfg.support;
+  const ALL_PERIODS=periodsFor(s?.settings);
+  const split=PERIODS.length;
+
+  const typePeriods=(t:string,d=date)=>
+    typePeriodsForDate(t,d,s?.settings);
+
+  const windowOf=(d:string,i:number)=>
+    defaultWindowOf(d,i,s?.settings);
+
+  useEffect(()=>{
+    const saved=localStorage.getItem('dds-theme')||'dark';
+
+    setTheme(saved);
+    document.documentElement.dataset.theme=saved;
+
+    setDate(operationalDate());
+    setPeriod(currentPeriod());
+
+    load();
+
+    const timer=setInterval(
+      ()=>setNow(Date.now()),
+      30000
     );
 
-  const [
-    rev,
-    setRev
-  ]=
-    useState(0);
-
-  const [
-    user,
-    setUser
-  ]=
-    useState('');
-
-  const [
-    view,
-    setView
-  ]=
-    useState('HOJE');
-
-  const [
-    date,
-    setDate
-  ]=
-    useState(
-      '2026-09-29'
-    );
-
-  const [
-    period,
-    setPeriod
-  ]=
-    useState(2);
-
-  const [
-    now,
-    setNow
-  ]=
-    useState(
-      Date.now()
-    );
-
-  const [
-    busy,
-    setBusy
-  ]=
-    useState(false);
-
-  const [
-    error,
-    setError
-  ]=
-    useState('');
-
-  const [
-    notice,
-    setNotice
-  ]=
-    useState('');
-
-  const [
-    modal,
-    setModal
-  ]=
-    useState<any>(
-      null
-    );
-
-  const [
-    q,
-    setQ
-  ]=
-    useState('');
-
-  const [
-    type,
-    setType
-  ]=
-    useState(
-      'Todos'
-    );
-
-  const [
-    shipTab,
-    setShipTab
-  ]=
-    useState(
-      'Todos'
-    );
-
-  const [
-    theme,
-    setTheme
-  ]=
-    useState(
-      'dark'
-    );
-
-  const [
-    recordType,
-    setRecordType
-  ]=
-    useState(
-      'CAM'
-    );
-
-  const [
-    recordDate,
-    setRecordDate
-  ]=
-    useState(
-      '2026-09-29'
-    );
-
-  const cfg=
-    config(
-      s?.settings
-    );
-
-  const PERIODS=
-    cfg.core;
-
-  const WORK_PERIODS=
-    cfg.support;
-
-  const ALL_PERIODS=
-    periodsFor(
-      s?.settings
-    );
-
-  const split=
-    PERIODS.length;
-
-  const typePeriods=
-    (
-      t:string,
-      d=date
-    )=>
-      typePeriodsForDate(
-        t,
-        d,
-        s?.settings
-      );
-
-  const windowOf=
-    (
-      d:string,
-      i:number
-    )=>
-      defaultWindowOf(
-        d,
-        i,
-        s?.settings
-      );
-
-  useEffect(
-    ()=>{
-
-      const saved=
-        localStorage.getItem(
-          'dds-theme'
-        ) || 'dark';
-
-      setTheme(
-        saved
-      );
-
-      document.documentElement.dataset.theme=
-        saved;
-
-      setDate(
-        operationalDate()
-      );
-
-      setPeriod(
-        currentPeriod()
-      );
-
-      load();
-
-      const t=
-        setInterval(
-          ()=>
-            setNow(
-              Date.now()
-            ),
-          30000
-        );
-
-      return ()=>
-        clearInterval(t);
-    },
-    []
-  );
+    return ()=>clearInterval(timer);
+  },[]);
 
   async function load(){
-
     setBusy(true);
     setError('');
 
     try{
+      const data=await loadWorkspace();
 
-      const d=
-        await loadWorkspace();
+      setS(data.state);
+      setRev(data.revision);
+      setUser(currentDisplayName());
 
-      setS(
-        d.state
+      const selection=currentSelection(
+        data.state.settings,
+        'core'
       );
 
-      setRev(
-        d.revision
-      );
-
-      setUser(
-        currentDisplayName()
-      );
-
-      const sel=
-        currentSelection(
-          d.state.settings,
-          'core'
-        );
-
-      setDate(
-        sel.date
-      );
-
-      setPeriod(
-        sel.index
-      );
-
+      setDate(selection.date);
+      setPeriod(selection.index);
     }catch(e){
-
-      setError(
-        String(
-          (
-            e as Error
-          ).message
-        )
-      );
-
+      setError(String((e as Error).message));
     }finally{
-
       setBusy(false);
     }
   }
 
-  async function save(
-    body:any
-  ){
-
+  async function save(body:any){
     setBusy(true);
     setError('');
 
     try{
-
-      const d=
-        await saveWorkspaceAction(
-          body,
-          rev,
-          user ||
-          currentDisplayName()
-        );
-
-      setS(
-        d.state
+      const data=await saveWorkspaceAction(
+        body,
+        rev,
+        user||currentDisplayName()
       );
 
-      setRev(
-        d.revision
-      );
+      setS(data.state);
+      setRev(data.revision);
+      setModal(null);
 
-      setModal(
-        null
-      );
-
-      setNotice(
-        'Alteração salva. Indicadores recalculados.'
-      );
+      setNotice('Alteração salva. Indicadores recalculados.');
 
       setTimeout(
-        ()=>
-          setNotice(''),
+        ()=>setNotice(''),
         4500
       );
-
     }catch(e){
-
-      setError(
-        (
-          e as Error
-        ).message
-      );
-
+      setError((e as Error).message);
     }finally{
-
       setBusy(false);
     }
   }
 
   function toggleTheme(){
+    const next=theme==='dark'?'light':'dark';
 
-    const t=
-      theme==='dark'
-        ?'light'
-        :'dark';
-
-    setTheme(t);
-
-    document.documentElement.dataset.theme=
-      t;
-
-    localStorage.setItem(
-      'dds-theme',
-      t
-    );
+    setTheme(next);
+    document.documentElement.dataset.theme=next;
+    localStorage.setItem('dds-theme',next);
   }
 
-  function navigate(
-    v:string
-  ){
-    setView(v);
+  function navigate(next:string){
+    setView(next);
     setQ('');
     setType('Todos');
   }
 
   function live(){
-
-    const sel=
-      currentSelection(
-        s?.settings,
-        period>=split
-          ?'support'
-          :'core'
-      );
-
-    setDate(
-      sel.date
+    const selection=currentSelection(
+      s?.settings,
+      period>=split?'support':'core'
     );
 
-    setPeriod(
-      sel.index
+    setDate(selection.date);
+    setPeriod(selection.index);
+  }
+
+  function defaultTypeFor(
+    targetDate:string,
+    targetPeriod:string
+  ){
+    return TYPES.find(t=>
+      cfg.rules[t].quantity>0&&
+      typePeriods(t,targetDate).includes(targetPeriod)
+    )||(
+      WORK_PERIODS.includes(targetPeriod)
+        ?'GATE'
+        :'NAVIO'
     );
   }
 
   function recordForm(
     item?:Obligation,
-    r?:RecordDDS
+    record?:RecordDDS
   ){
-
-    const d=
-      r?.date ||
-      item?.date ||
+    const selectedDate=
+      record?.date||
+      item?.date||
       date;
 
-    const p=
-      r?.period ||
-      item?.period ||
-      ALL_PERIODS[
-        period
-      ];
+    const selectedPeriod=
+      record?.period||
+      item?.period||
+      ALL_PERIODS[period];
 
-    const fallback=
-      TYPES.find(
-        t=>
-          cfg.rules[t]
-            .quantity>0 &&
-          typePeriods(
-            t,
-            d
-          ).includes(
-            p
-          )
-      ) ||
-      (
-        WORK_PERIODS.includes(p)
-          ?'GATE'
-          :'NAVIO'
+    const selectedType=
+      record?.type||
+      item?.type||
+      defaultTypeFor(
+        selectedDate,
+        selectedPeriod
       );
 
-    const selected=
-      r?.type ||
-      item?.type ||
-      fallback;
-
-    setRecordDate(
-      d
-    );
-
-    setRecordType(
-      selected
-    );
+    setRecordDate(selectedDate);
+    setRecordType(selectedType);
 
     setModal({
       kind:'record',
-
-      record:
-        r || {
-          type:selected,
-
-          ship:
-            item?.type==='NAVIO'
-              ?item.reference
-              :'',
-
-          date:d,
-          period:p,
-
-          applied:
-            localNow()
-              .slice(
-                0,
-                16
-              ),
-
-          applicator:'',
-          supervisor:'',
-          participants:'',
-          topics:'',
-          photo:false,
-          signature:false
-        }
+      record:record||{
+        type:selectedType,
+        sector:'Operações',
+        ship:item?.type==='NAVIO'?item.reference:'',
+        date:selectedDate,
+        period:selectedPeriod,
+        applied:localNow().slice(0,16),
+        applicator:'',
+        supervisor:'',
+        participants:'',
+        topics:'',
+        photo:false,
+        signature:false
+      }
     });
   }
 
-  function exportCSV(){
+  const operationalRecords=s?.records.filter(isOperationsRecord)||[];
 
-    if(
-      !s
-    ){
-      return;
-    }
+  function exportCSV(){
+    if(!s)return;
 
     const fields=[
       'id',
+      'sector',
       'type',
       'ship',
       'date',
@@ -664,623 +370,393 @@ export default function Tower(){
       'participants',
       'topics',
       'photo',
-      'signature'
+      'signature',
+      'source'
     ];
 
     const csv=
       '\ufeff'+
       [
         fields,
-
-        ...s.records.map(
-          r=>
-            fields.map(
-              f=>
-                String(
-                  (
-                    r as any
-                  )[f] ?? ''
-                )
-            )
+        ...operationalRecords.map(r=>
+          fields.map(f=>String((r as any)[f]??''))
         )
       ]
-        .map(
-          a=>
-            a
-              .map(
-                v=>
-                  '"'+
-                  v.replace(
-                    /"/g,
-                    '""'
-                  )+
-                  '"'
-              )
-              .join(';')
+        .map(row=>
+          row
+            .map(value=>
+              '"'+value.replace(/"/g,'""')+'"'
+            )
+            .join(';')
         )
         .join('\r\n');
 
-    const url=
-      URL.createObjectURL(
-        new Blob(
-          [csv],
-          {
-            type:
-              'text/csv;charset=utf-8'
-          }
-        )
-      );
-
-    const a=
-      document.createElement(
-        'a'
-      );
-
-    a.href=
-      url;
-
-    a.download=
-      'DDS-historico.csv';
-
-    a.click();
-
-    URL.revokeObjectURL(
-      url
+    const url=URL.createObjectURL(
+      new Blob(
+        [csv],
+        {
+          type:'text/csv;charset=utf-8'
+        }
+      )
     );
+
+    const anchor=document.createElement('a');
+
+    anchor.href=url;
+    anchor.download='DDS-historico-operacoes.csv';
+    anchor.click();
+
+    URL.revokeObjectURL(url);
   }
 
-  if(
-    !s
-  ){
+  if(!s){
     return (
       <div className="loading">
-
         <Anchor size={42}/>
 
-        <h1>
-          DDS Control Tower
-        </h1>
+        <h1>DDS Control Tower</h1>
 
         <p>
-          {error ||
-           'Carregando os registros…'}
+          {error||'Carregando os registros…'}
         </p>
 
-        {error && (
+        {error&&(
           <>
-
-            <button
-              onClick={load}
-            >
+            <button onClick={load}>
               Tentar novamente
             </button>
 
-            <button
-              onClick={
-                ()=>logout()
-              }
-            >
+            <button onClick={()=>logout()}>
               Sair
             </button>
-
           </>
         )}
-
       </div>
     );
   }
 
-  const rows=
-    obligations(
+  const rows=obligations(
+    s,
+    date,
+    period,
+    now
+  );
+
+  const all=ALL_PERIODS.flatMap(
+    (_,i)=>obligations(
       s,
       date,
-      period,
+      i,
       now
-    );
+    )
+  );
 
-  const all=
-    ALL_PERIODS.flatMap(
-      (_,i)=>
-        obligations(
+  const stats=score(rows);
+
+  const pending=all.filter(x=>
+    [
+      'Atrasado',
+      'Realizado com pendência'
+    ].includes(x.status)
+  );
+
+  const review=operationalRecords.filter(
+    r=>!validRecord(r,s.settings)
+  );
+
+  const legacyTestRecords=s.records.filter(r=>
+    /^Excel de teste(?:\s*•|$)/i.test(r.source||'')||
+    (r.source||'')==='Registro manual de teste'
+  );
+
+  const unmatched=operationalRecords.filter(r=>
+    validRecord(r,s.settings)&&
+    r.type==='NAVIO'&&
+    !ALL_PERIODS
+      .flatMap(
+        (_,i)=>obligations(
           s,
-          date,
+          r.date,
           i,
           now
         )
-    );
-
-  const stats=
-    score(rows);
-
-  const pending=
-    all.filter(
-      x=>
-        [
-          'Atrasado',
-          'Realizado com pendência'
-        ].includes(
-          x.status
-        )
-    );
-
-  const review=
-    s.records.filter(
-      r=>
-        !validRecord(
-          r,
-          s.settings
-        )
-    );
-
-  const legacyTestRecords=
-    s.records.filter(
-      r=>
-        /^Excel de teste(?:\s*•|$)/i.test(
-          r.source||''
-        ) ||
+      )
+      .some(o=>
+        o.record?.id===r.id||
         (
-          r.source||''
-        )==='Registro manual de teste'
-    );
-
-  const unmatched=
-    s.records.filter(
-      r=>
-        validRecord(
-          r,
-          s.settings
-        ) &&
-        r.type==='NAVIO' &&
-        !ALL_PERIODS
-          .flatMap(
-            (_,i)=>
-              obligations(
-                s,
-                r.date,
-                i,
-                now
-              )
-          )
-          .some(
-            o=>
-              o.record?.id===r.id ||
-              (
-                o.type==='NAVIO' &&
-                norm(o.reference)===
-                  norm(r.ship) &&
-                o.period===r.period
-              )
-          )
-    );
-
-  const tv=
-    view==='MODO TV';
-
-  const activeTypes=
-    TYPES.filter(
-      t=>
-        cfg.rules[t]
-          .quantity>0 &&
-        typePeriods(
-          t,
-          date
-        ).includes(
-          ALL_PERIODS[
-            period
-          ]
+          o.type==='NAVIO'&&
+          norm(o.reference)===norm(r.ship)&&
+          o.period===r.period
         )
-    );
-
-  const periodIndexes=
-    ALL_PERIODS
-      .map(
-        (_,i)=>i
       )
-      .filter(
-        i=>
-          period>=split
-            ?i>=split
-            :i<split
-      );
+  );
 
-  const selectedWindow=
-    windowOf(
-      date,
-      period
+  const tv=view==='MODO TV';
+
+  const activeTypes=TYPES.filter(t=>
+    cfg.rules[t].quantity>0&&
+    typePeriods(t,date).includes(
+      ALL_PERIODS[period]
+    )
+  );
+
+  const periodIndexes=ALL_PERIODS
+    .map((_,i)=>i)
+    .filter(i=>
+      period>=split
+        ?i>=split
+        :i<split
     );
 
-  const visibleShips=
-    s.ships.filter(
-      v=>
-        !v.deleted &&
-        v.status!=='Cancelado' &&
-        epoch(v.start)<
-          selectedWindow.end &&
-        epoch(
-          v.actualEnd||v.end
-        )>
-          selectedWindow.start
+  const selectedWindow=windowOf(
+    date,
+    period
+  );
+
+  const visibleShips=s.ships.filter(v=>
+    !v.deleted&&
+    v.status!=='Cancelado'&&
+    epoch(v.start)<selectedWindow.end&&
+    epoch(v.actualEnd||v.end)>selectedWindow.start
+  );
+
+  const shipIndex=period<split?period:0;
+
+  const shipRows=obligations(
+    s,
+    date,
+    shipIndex,
+    now
+  );
+
+  const visibleRecords=operationalRecords
+    .filter(r=>
+      (type==='Todos'||r.type===type)&&
+      norm(
+        [
+          r.sector,
+          r.ship,
+          r.applicator,
+          r.type,
+          r.topics
+        ].join(' ')
+      ).includes(norm(q))
+    )
+    .sort((a,b)=>
+      b.applied.localeCompare(a.applied)||
+      b.id.localeCompare(a.id)
     );
 
-  const shipIndex=
-    period<split
-      ?period
-      :0;
+  const shipState=(v:Ship)=>
+    v.status==='Cancelado'
+      ?'Cancelados'
+      :v.status==='Finalizado'
+        ?'Finalizados'
+        :epoch(v.start)>now
+          ?'Programados'
+          :epoch(v.end)<now
+            ?'Fim previsto vencido'
+            :'Em operação';
 
-  const shipRows=
-    obligations(
-      s,
-      date,
-      shipIndex,
-      now
-    );
+  const obligationTable=(list:Obligation[])=>(
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tipo / referência</th>
+            <th>Período</th>
+            <th>Status</th>
+            <th>Prazo</th>
+            <th>Supervisor</th>
+            <th>Realizado</th>
+            <th/>
+          </tr>
+        </thead>
 
-  const visibleRecords=
-    s.records
-      .filter(
-        r=>
-          (
-            type==='Todos' ||
-            r.type===type
-          ) &&
-          norm(
-            [
-              r.ship,
-              r.applicator,
-              r.type,
-              r.topics
-            ].join(' ')
-          ).includes(
-            norm(q)
-          )
-      )
-      .sort(
-        (a,b)=>
-          b.applied.localeCompare(
-            a.applied
-          ) ||
-          b.id.localeCompare(
-            a.id
-          )
-      );
+        <tbody>
+          {[...list]
+            .sort((a,b)=>
+              (
+                !a.record&&
+                a.status!=='Justificado'
+                  ?0
+                  :1
+              )-
+              (
+                !b.record&&
+                b.status!=='Justificado'
+                  ?0
+                  :1
+              )||
+              a.due-b.due
+            )
+            .map(r=>(
+              <tr
+                key={r.key}
+                className={
+                  !r.record&&
+                  r.status!=='Justificado'
+                    ?r.status==='Atrasado'
+                      ?'dds-not-done overdue'
+                      :'dds-not-done'
+                    :''
+                }
+              >
+                <td>
+                  <strong>{r.reference}</strong>
 
-  const shipState=
-    (v:Ship)=>
-      v.status==='Cancelado'
-        ?'Cancelados'
-        :v.status==='Finalizado'
-          ?'Finalizados'
-          :epoch(v.start)>now
-            ?'Programados'
-            :epoch(v.end)<now
-              ?'Fim previsto vencido'
-              :'Em operação';
+                  <small>
+                    {r.type}
+                    {r.quantity>1
+                      ?` • DDS ${r.slot} de ${r.quantity}`
+                      :r.count>1
+                        ?` • ${r.count} respostas, 1 obrigação`
+                        :''}
+                  </small>
+                </td>
 
-  const obligationTable=
-    (
-      list:Obligation[]
-    )=>(
-      <div className="table-wrap">
+                <td>{r.period}</td>
 
-        <table>
+                <td>
+                  <Badge text={r.status}/>
 
-          <thead>
-            <tr>
-              <th>
-                Tipo / referência
-              </th>
-              <th>
-                Período
-              </th>
-              <th>
-                Status
-              </th>
-              <th>
-                Prazo
-              </th>
-              <th>
-                Supervisor
-              </th>
-              <th>
-                Realizado
-              </th>
-              <th/>
-            </tr>
-          </thead>
+                  {!r.record&&r.status!=='Justificado'&&(
+                    <small className="not-done-label">
+                      DDS ainda não realizado
+                    </small>
+                  )}
 
-          <tbody>
+                  {r.record&&epoch(r.record.applied)>r.due&&(
+                    <small>
+                      Aplicado após o prazo
+                    </small>
+                  )}
+                </td>
 
-            {[...list]
-              .sort(
-                (a,b)=>
-                  (
-                    !a.record &&
-                    a.status!=='Justificado'
-                      ?0
-                      :1
-                  ) -
-                  (
-                    !b.record &&
-                    b.status!=='Justificado'
-                      ?0
-                      :1
-                  ) ||
-                  a.due-b.due
-              )
-              .map(
-                r=>(
-                  <tr
-                    key={r.key}
-                    className={
-                      !r.record &&
-                      r.status!=='Justificado'
-                        ?
-                          r.status==='Atrasado'
-                            ?'dds-not-done overdue'
-                            :'dds-not-done'
-                        :''
-                    }
+                <td>{fmtTime(r.due)}</td>
+
+                <td>{r.record?.supervisor||'-'}</td>
+
+                <td>
+                  {r.record
+                    ?fmtTime(r.record.applied)
+                    :'-'}
+                </td>
+
+                <td>
+                  <button
+                    className="subtle"
+                    onClick={()=>setModal({
+                      kind:'obligation',
+                      item:r
+                    })}
                   >
+                    Detalhes
+                    <ChevronRight size={15}/>
+                  </button>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
 
-                    <td>
-                      <strong>
-                        {r.reference}
-                      </strong>
-
-                      <small>
-                        {r.type}
-
-                        {r.quantity>1
-                          ?` • DDS ${r.slot} de ${r.quantity}`
-                          :r.count>1
-                            ?` • ${r.count} respostas, 1 obrigação`
-                            :''}
-                      </small>
-                    </td>
-
-                    <td>
-                      {r.period}
-                    </td>
-
-                    <td>
-
-                      <Badge
-                        text={
-                          r.status
-                        }
-                      />
-
-                      {!r.record &&
-                       r.status!=='Justificado' && (
-                        <small className="not-done-label">
-                          DDS ainda não realizado
-                        </small>
-                      )}
-
-                      {r.record &&
-                       epoch(
-                         r.record.applied
-                       )>r.due && (
-                        <small>
-                          Aplicado após o prazo
-                        </small>
-                      )}
-
-                    </td>
-
-                    <td>
-                      {fmtTime(
-                        r.due
-                      )}
-                    </td>
-
-                    <td>
-                      {r.record?.supervisor || '—'}
-                    </td>
-
-                    <td>
-                      {r.record
-                        ?fmtTime(
-                           r.record.applied
-                         )
-                        :'—'}
-                    </td>
-
-                    <td>
-
-                      <button
-                        className="subtle"
-                        onClick={
-                          ()=>
-                            setModal({
-                              kind:'obligation',
-                              item:r
-                            })
-                        }
-                      >
-                        Detalhes
-
-                        <ChevronRight
-                          size={15}
-                        />
-                      </button>
-
-                    </td>
-
-                  </tr>
-                )
-              )}
-
-          </tbody>
-
-        </table>
-
-        {!list.length && (
-          <div className="empty">
-            <Check/>
-            <p>
-              Nenhum item nesta seleção.
-            </p>
-          </div>
-        )}
-
-      </div>
-    );
+      {!list.length&&(
+        <div className="empty">
+          <Check/>
+          <p>Nenhum item nesta seleção.</p>
+        </div>
+      )}
+    </div>
+  );
 
   const timeline=(
     <>
-
       <div
         className="regime-switch"
         aria-label="Regime de trabalho"
       >
-
         <button
-          className={
-            period<split
-              ?'selected'
-              :''
-          }
-          onClick={
-            ()=>setPeriod(0)
-          }
+          className={period<split?'selected':''}
+          onClick={()=>setPeriod(0)}
         >
           {TYPES
-            .filter(
-              t=>
-                cfg.rules[t]
-                  .quantity>0 &&
-                typePeriods(
-                  t,
-                  date
-                ).some(
-                  p=>
-                    PERIODS.includes(p)
-                )
+            .filter(t=>
+              cfg.rules[t].quantity>0&&
+              typePeriods(t,date).some(p=>PERIODS.includes(p))
             )
-            .join(' · ') ||
-           'Períodos de 6h'}
+            .join(' · ')||
+            'Períodos de 6h'}
         </button>
 
         <button
-          className={
-            period>=split
-              ?'selected'
-              :''
-          }
-          onClick={
-            ()=>setPeriod(split)
-          }
+          className={period>=split?'selected':''}
+          onClick={()=>setPeriod(split)}
         >
           {TYPES
-            .filter(
-              t=>
-                cfg.rules[t]
-                  .quantity>0 &&
-                typePeriods(
-                  t,
-                  date
-                ).some(
-                  p=>
-                    WORK_PERIODS.includes(p)
-                )
+            .filter(t=>
+              cfg.rules[t].quantity>0&&
+              typePeriods(t,date).some(p=>WORK_PERIODS.includes(p))
             )
-            .join(' · ') ||
-           'Períodos de 12h'}
+            .join(' · ')||
+            'Períodos de 12h'}
         </button>
-
       </div>
 
-      <div
-        className={
-          'periods '+
-          (
-            period>=split
-              ?'two-periods'
-              :''
-          )
-        }
-      >
+      <div className={'periods '+(period>=split?'two-periods':'')}>
+        {periodIndexes.map(i=>{
+          const p=ALL_PERIODS[i];
 
-        {periodIndexes.map(
-          i=>{
+          const obligationsForPeriod=obligations(
+            s,
+            date,
+            i,
+            now
+          );
 
-            const p=
-              ALL_PERIODS[i];
+          const periodScore=score(
+            obligationsForPeriod
+          );
 
-            const a=
-              obligations(
-                s,
-                date,
-                i,
-                now
-              );
+          return (
+            <button
+              key={p}
+              className={period===i?'selected':''}
+              onClick={()=>setPeriod(i)}
+            >
+              <div>
+                <strong>{p}</strong>
 
-            const k=
-              score(a);
+                {period===i&&(
+                  <span>Selecionado</span>
+                )}
+              </div>
 
-            return (
-              <button
-                key={p}
-                className={
-                  period===i
-                    ?'selected'
-                    :''
-                }
-                onClick={
-                  ()=>setPeriod(i)
-                }
-              >
+              <div className="period-value">
+                {periodScore.pct}%
+                {' '}
+                <small>
+                  {periodScore.done}/{periodScore.total} DDS
+                </small>
+              </div>
 
-                <div>
-                  <strong>
-                    {p}
-                  </strong>
-
-                  {period===i && (
-                    <span>
-                      Selecionado
-                    </span>
-                  )}
-                </div>
-
-                <div className="period-value">
-                  {k.pct}%
-
-                  {' '}
-
-                  <small>
-                    {k.done}/{k.total} DDS
-                  </small>
-                </div>
-
-                <div className="track">
-                  <i
-                    style={{
-                      width:
-                        k.pct+'%'
-                    }}
-                  />
-                </div>
-
-              </button>
-            );
-          }
-        )}
-
+              <div className="track">
+                <i
+                  style={{
+                    width:periodScore.pct+'%'
+                  }}
+                />
+              </div>
+            </button>
+          );
+        })}
       </div>
-
     </>
   );
 
   const cards=(
     <div className="kpis">
-
       <div className="kpi lead">
-
-        <span>
-          ADERÊNCIA DO PERÍODO
-        </span>
+        <span>ADERÊNCIA DO PERÍODO</span>
 
         <strong>
           {stats.pct}
@@ -1294,99 +770,66 @@ export default function Tower(){
         <div className="track">
           <i
             style={{
-              width:
-                stats.pct+'%'
+              width:stats.pct+'%'
             }}
           />
         </div>
-
       </div>
 
-      {activeTypes.map(
-        t=>{
+      {activeTypes.map(t=>{
+        const typeScore=score(
+          rows.filter(r=>r.type===t)
+        );
 
-          const k=
-            score(
-              rows.filter(
-                r=>
-                  r.type===t
-              )
-            );
+        const Icon=(
+          {
+            NAVIO:ShipIcon,
+            CAM:Truck,
+            RS:Users,
+            GATE:DoorOpen,
+            REEFER:Snowflake,
+            ARMAZÉM:Warehouse
+          } as any
+        )[t];
 
-          const Icon=
-            (
-              {
-                NAVIO:ShipIcon,
-                CAM:Truck,
-                RS:Users,
-                GATE:DoorOpen,
-                REEFER:Snowflake,
-                ARMAZÉM:Warehouse
-              } as any
-            )[t];
-
-          return (
-            <div
-              className="kpi"
-              key={t}
-            >
-
-              <div className="kpi-label">
-                <span>
-                  {t}
-                </span>
-
-                <Icon size={22}/>
-              </div>
-
-              <strong>
-                {k.done}
-                <em>
-                  {' / '}
-                  {k.total}
-                </em>
-              </strong>
-
-              <p>
-                {k.total
-                  ?'DDS realizados'
-                  :t==='NAVIO'
-                    ?'Nenhum navio previsto'
-                    :'Nenhuma obrigação'}
-              </p>
-
+        return (
+          <div className="kpi" key={t}>
+            <div className="kpi-label">
+              <span>{t}</span>
+              <Icon size={22}/>
             </div>
-          );
-        }
-      )}
 
+            <strong>
+              {typeScore.done}
+              <em>
+                {' / '}
+                {typeScore.total}
+              </em>
+            </strong>
+
+            <p>
+              {typeScore.total
+                ?'DDS realizados'
+                :t==='NAVIO'
+                  ?'Nenhum navio previsto'
+                  :'Nenhuma obrigação'}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 
   return (
-    <div
-      className={
-        'shell '+
-        (
-          tv
-            ?'tv'
-            :''
-        )
-      }
-    >
-
-      {!tv && (
+    <div className={'shell '+(tv?'tv':'')}>
+      {!tv&&(
         <aside className="sidebar">
-
           <div className="brand">
             <Anchor size={29}/>
 
             <div>
               DDS
-
-              <span>
-                CONTROL TOWER
-              </span>
+              <span>CONTROL TOWER</span>
             </div>
           </div>
 
@@ -1395,62 +838,38 @@ export default function Tower(){
           </div>
 
           <nav>
+            {menus.map(([m,Icon])=>(
+              <button
+                key={m}
+                onClick={()=>navigate(m)}
+                className={view===m?'active':''}
+              >
+                <Icon size={19}/>
 
-            {menus.map(
-              ([m,Icon])=>(
-                <button
-                  key={m}
-                  onClick={
-                    ()=>navigate(m)
-                  }
-                  className={
-                    view===m
-                      ?'active'
-                      :''
-                  }
-                >
+                {m}
 
-                  <Icon size={19}/>
-
-                  {m}
-
-                  {m==='PENDÊNCIAS' &&
-                   pending.length>0 && (
-                    <b>
-                      {pending.length}
-                    </b>
-                  )}
-
-                </button>
-              )
-            )}
-
+                {m==='PENDÊNCIAS'&&pending.length>0&&(
+                  <b>{pending.length}</b>
+                )}
+              </button>
+            ))}
           </nav>
 
           <button
             className="tv-link"
-            onClick={
-              ()=>
-                navigate(
-                  'MODO TV'
-                )
-            }
+            onClick={()=>navigate('MODO TV')}
           >
             <Monitor size={19}/>
             DASHBOARD DO DIA
           </button>
 
           <div className="profile">
-
             <div className="avatar">
               {user.slice(0,1)||'D'}
             </div>
 
             <div>
-
-              <strong>
-                {user||'Operador'}
-              </strong>
+              <strong>{user||'Operador'}</strong>
 
               <small>
                 Firebase · dados compartilhados
@@ -1458,47 +877,35 @@ export default function Tower(){
 
               <button
                 className="profile-logout"
-                onClick={
-                  ()=>logout()
-                }
+                onClick={()=>logout()}
               >
                 Sair
               </button>
-
             </div>
-
           </div>
-
         </aside>
       )}
 
       <main>
-
         <header className="top">
-
           <div className="breadcrumb">
             DDS Control Tower
             <span>/</span>
             {tv
               ?'Dashboard do dia'
-              :view.charAt(0)+
-               view.slice(1).toLowerCase()}
+              :view.charAt(0)+view.slice(1).toLowerCase()}
           </div>
 
           <div className="top-right">
-
             <button
               className="theme-toggle"
-              onClick={
-                toggleTheme
-              }
+              onClick={toggleTheme}
               aria-label={
                 theme==='dark'
                   ?'Ativar modo claro'
                   :'Ativar modo escuro'
               }
             >
-
               {theme==='dark'
                 ?<Sun size={17}/>
                 :<Moon size={17}/>}
@@ -1508,15 +915,12 @@ export default function Tower(){
                   ?'Modo claro'
                   :'Modo escuro'}
               </span>
-
             </button>
 
             <span>
-              {(s as any)
-                .hashdata
-                ?.lastSuccess
-                  ?'Hashdata sincronizado'
-                  :'Hashdata: configurar importação'}
+              {(s as any).hashdata?.lastSuccess
+                ?'Hashdata sincronizado'
+                :'Hashdata: configurar importação'}
             </span>
 
             <button
@@ -1527,46 +931,27 @@ export default function Tower(){
             >
               <RefreshCw
                 size={17}
-                className={
-                  busy
-                    ?'spin'
-                    :''
-                }
+                className={busy?'spin':''}
               />
             </button>
-
           </div>
-
         </header>
 
         <div className="content">
-
           <HashdataPanel
-            settings={
-              view==='CONFIGURAÇÕES'
-            }
-            info={
-              (s as any)
-                .hashdata
-            }
-            blocked={
-              busy ||
-              !!modal
-            }
+            settings={view==='CONFIGURAÇÕES'}
+            info={(s as any).hashdata}
+            blocked={busy||!!modal}
             revision={rev}
             user={user}
-            onChange={
-              d=>{
-                setS(d.state);
-                setRev(d.revision);
-              }
-            }
+            onChange={data=>{
+              setS(data.state);
+              setRev(data.revision);
+            }}
           />
 
           <div className="heading">
-
             <div>
-
               <div className="eyebrow">
                 CONTROLE DE ADERÊNCIA OPERACIONAL
               </div>
@@ -1589,79 +974,51 @@ export default function Tower(){
 
               <p>
                 {tv
-                  ?
-                    'Visão consolidada • '+
-                    fmtDate(date)
-                  :
-                    'Última alteração '+
-                    fmtDate(
-                      s.updated.slice(
-                        0,
-                        10
-                      )
-                    )+
+                  ?'Visão consolidada • '+fmtDate(date)
+                  :'Última alteração '+
+                    fmtDate(s.updated.slice(0,10))+
                     ' às '+
-                    s.updated.slice(
-                      11,
-                      16
-                    )}
+                    s.updated.slice(11,16)}
               </p>
-
             </div>
 
             <div className="heading-actions">
-
               {tv
-                ?
+                ?(
                   <>
                     <strong className="tv-clock">
                       {fmtTime(now)}
                     </strong>
 
                     <button
-                      onClick={
-                        ()=>
-                          navigate(
-                            'HOJE'
-                          )
-                      }
+                      onClick={()=>navigate('HOJE')}
                     >
                       Voltar à operação
                     </button>
                   </>
-                :
+                )
+                :(
                   <>
-
                     <input
                       aria-label="Data operacional"
                       type="date"
                       value={date}
-                      onChange={
-                        e=>
-                          e.target.value &&
-                          setDate(
-                            e.target.value
-                          )
+                      onChange={e=>
+                        e.target.value&&setDate(e.target.value)
                       }
                     />
 
-                    <button
-                      onClick={live}
-                    >
+                    <button onClick={live}>
                       Agora
                     </button>
 
                     {view==='NAVIOS'
-                      ?
+                      ?(
                         <>
-
                           <button
-                            onClick={
-                              ()=>
-                                setModal({
-                                  kind:'import'
-                                })
-                            }
+                            onClick={()=>setModal({
+                              kind:'import'
+                            })}
                           >
                             <Upload size={17}/>
                             Importar arquivo de e-mail
@@ -1669,41 +1026,32 @@ export default function Tower(){
 
                           <button
                             className="primary"
-                            onClick={
-                              ()=>
-                                setModal({
-                                  kind:'ship'
-                                })
-                            }
+                            onClick={()=>setModal({
+                              kind:'ship'
+                            })}
                           >
                             <Plus size={17}/>
                             Novo navio
                           </button>
-
                         </>
-                      :
-                        view==='HISTÓRICO'
-                          ?
-                            <button
-                              className="primary"
-                              onClick={
-                                ()=>recordForm()
-                              }
-                            >
-                              <Plus size={17}/>
-                              Registrar DDS
-                            </button>
-                          :
-                            null}
-
+                      )
+                      :view==='HISTÓRICO'
+                        ?(
+                          <button
+                            className="primary"
+                            onClick={()=>recordForm()}
+                          >
+                            <Plus size={17}/>
+                            Registrar DDS
+                          </button>
+                        )
+                        :null}
                   </>
-              }
-
+                )}
             </div>
-
           </div>
 
-          {error && (
+          {error&&(
             <div
               role="alert"
               className="alert danger"
@@ -1711,9 +1059,7 @@ export default function Tower(){
               {error}
 
               <button
-                onClick={
-                  ()=>setError('')
-                }
+                onClick={()=>setError('')}
                 aria-label="Dispensar erro"
               >
                 <X size={16}/>
@@ -1721,7 +1067,7 @@ export default function Tower(){
             </div>
           )}
 
-          {notice && (
+          {notice&&(
             <div
               role="status"
               className="alert success"
@@ -1730,11 +1076,9 @@ export default function Tower(){
             </div>
           )}
 
-          {view==='HOJE' && (
+          {view==='HOJE'&&(
             <>
-
               {timeline}
-
               {cards}
 
               <Panel
@@ -1747,9 +1091,7 @@ export default function Tower(){
                     {' · '}
                     {
                       rows.filter(
-                        r=>
-                          !r.record &&
-                          r.status!=='Justificado'
+                        r=>!r.record&&r.status!=='Justificado'
                       ).length
                     }
                     {' '}
@@ -1760,9 +1102,8 @@ export default function Tower(){
                 {obligationTable(rows)}
               </Panel>
 
-              {period<split && (
+              {period<split&&(
                 <details className="ships-disclosure">
-
                   <summary>
                     Navios no período · {visibleShips.length} operações
                   </summary>
@@ -1776,175 +1117,106 @@ export default function Tower(){
                       </span>
                     }
                   >
-
                     <div className="vessel-grid">
+                      {visibleShips.map(v=>{
+                        const related=all.filter(r=>
+                          r.type==='NAVIO'&&
+                          r.entityId===v.id&&
+                          (
+                            r.start<selectedWindow.end&&
+                            windowOf(
+                              date,
+                              ALL_PERIODS.indexOf(r.period)
+                            ).end>selectedWindow.start
+                          )
+                        );
 
-                      {visibleShips.map(
-                        v=>{
+                        return (
+                          <article
+                            className="vessel-card"
+                            key={v.id}
+                          >
+                            <div className="vessel-title">
+                              <ShipIcon size={24}/>
 
-                          const related=
-                            all.filter(
-                              r=>
-                                r.type==='NAVIO' &&
-                                r.entityId===v.id &&
-                                (
-                                  r.start<
-                                  selectedWindow.end &&
-                                  windowOf(
-                                    date,
-                                    ALL_PERIODS.indexOf(
-                                      r.period
-                                    )
-                                  ).end>
-                                  selectedWindow.start
-                                )
-                            );
+                              <div>
+                                <h3>{v.name}</h3>
+                                <small>Berço {v.berth}</small>
+                              </div>
 
-                          return (
-                            <article
-                              className="vessel-card"
-                              key={v.id}
-                            >
+                              <button
+                                className="subtle"
+                                onClick={()=>setModal({
+                                  kind:'ship',
+                                  ship:v
+                                })}
+                              >
+                                Gerenciar
+                              </button>
+                            </div>
 
-                              <div className="vessel-title">
+                            <dl>
+                              <dt>Início</dt>
+                              <dd>
+                                {fmtDate(v.start.slice(0,10))}
+                                {' · '}
+                                {v.start.slice(11,16)}
+                              </dd>
 
-                                <ShipIcon size={24}/>
+                              <dt>
+                                {v.actualEnd?'Saída real':'Fim previsto'}
+                              </dt>
 
-                                <div>
-                                  <h3>
-                                    {v.name}
-                                  </h3>
+                              <dd>
+                                {fmtDate((v.actualEnd||v.end).slice(0,10))}
+                                {' · '}
+                                {(v.actualEnd||v.end).slice(11,16)}
+                              </dd>
+                            </dl>
 
-                                  <small>
-                                    Berço {v.berth}
-                                  </small>
-                                </div>
-
+                            <div className="vessel-status">
+                              {related.map(r=>(
                                 <button
+                                  key={r.key}
                                   className="subtle"
-                                  onClick={
-                                    ()=>
-                                      setModal({
-                                        kind:'ship',
-                                        ship:v
-                                      })
-                                  }
+                                  onClick={()=>setModal({
+                                    kind:'obligation',
+                                    item:r
+                                  })}
                                 >
-                                  Gerenciar
+                                  {period>=split&&(
+                                    <span>{r.period}</span>
+                                  )}
+
+                                  {r.quantity>1&&(
+                                    <span>
+                                      DDS {r.slot}/{r.quantity}
+                                    </span>
+                                  )}
+
+                                  <Badge text={r.status}/>
                                 </button>
+                              ))}
+                            </div>
 
-                              </div>
+                            {v.startBasis&&(
+                              <small>
+                                Início: {v.startBasis}
+                              </small>
+                            )}
 
-                              <dl>
-
-                                <dt>
-                                  Início
-                                </dt>
-
-                                <dd>
-                                  {fmtDate(
-                                    v.start.slice(
-                                      0,
-                                      10
-                                    )
-                                  )}
-                                  {' · '}
-                                  {v.start.slice(
-                                    11,
-                                    16
-                                  )}
-                                </dd>
-
-                                <dt>
-                                  {v.actualEnd
-                                    ?'Saída real'
-                                    :'Fim previsto'}
-                                </dt>
-
-                                <dd>
-                                  {fmtDate(
-                                    (
-                                      v.actualEnd ||
-                                      v.end
-                                    ).slice(
-                                      0,
-                                      10
-                                    )
-                                  )}
-                                  {' · '}
-                                  {
-                                    (
-                                      v.actualEnd ||
-                                      v.end
-                                    ).slice(
-                                      11,
-                                      16
-                                    )
-                                  }
-                                </dd>
-
-                              </dl>
-
-                              <div className="vessel-status">
-
-                                {related.map(
-                                  r=>(
-                                    <button
-                                      key={r.key}
-                                      className="subtle"
-                                      onClick={
-                                        ()=>
-                                          setModal({
-                                            kind:'obligation',
-                                            item:r
-                                          })
-                                      }
-                                    >
-
-                                      {period>=split && (
-                                        <span>
-                                          {r.period}
-                                        </span>
-                                      )}
-
-                                      {r.quantity>1 && (
-                                        <span>
-                                          DDS {r.slot}/{r.quantity}
-                                        </span>
-                                      )}
-
-                                      <Badge
-                                        text={r.status}
-                                      />
-
-                                    </button>
-                                  )
-                                )}
-
-                              </div>
-
-                              {v.startBasis && (
-                                <small>
-                                  Início: {v.startBasis}
-                                </small>
-                              )}
-
-                              {!!v.review?.length && (
-                                <small className="review-flag">
-                                  Programação estimada · conferir observações
-                                </small>
-                              )}
-
-                            </article>
-                          );
-                        }
-                      )}
-
+                            {!!v.review?.length&&(
+                              <small className="review-flag">
+                                Programação estimada · conferir observações
+                              </small>
+                            )}
+                          </article>
+                        );
+                      })}
                     </div>
 
-                    {!visibleShips.length && (
+                    {!visibleShips.length&&(
                       <div className="empty">
-
                         <ShipIcon/>
 
                         <p>
@@ -1952,31 +1224,18 @@ export default function Tower(){
                         </p>
 
                         <button
-                          onClick={
-                            ()=>
-                              navigate(
-                                'NAVIOS'
-                              )
-                          }
+                          onClick={()=>navigate('NAVIOS')}
                         >
                           Ver programação e importar
                         </button>
-
                       </div>
                     )}
-
                   </Panel>
-
                 </details>
               )}
 
-              {!tv &&
-               (
-                 review.length>0 ||
-                 unmatched.length>0
-               ) && (
+              {!tv&&(review.length>0||unmatched.length>0)&&(
                 <div className="review-note">
-
                   <FileCheck2 size={20}/>
 
                   <span>
@@ -1984,31 +1243,22 @@ export default function Tower(){
                       {review.length} registro(s) para revisão · {unmatched.length} DDS de navio sem vínculo com programação.
                     </strong>
                     {' '}
-                    Confira o histórico e cadastre as janelas em NAVIOS.
+                    Somente registros do setor Operações entram nos indicadores.
                   </span>
 
                   <button
-                    onClick={
-                      ()=>
-                        navigate(
-                          'HISTÓRICO'
-                        )
-                    }
+                    onClick={()=>navigate('HISTÓRICO')}
                   >
                     Revisar
                   </button>
-
                 </div>
               )}
-
             </>
           )}
 
-          {view==='NAVIOS' && (
+          {view==='NAVIOS'&&(
             <>
-
               <div className="tabs">
-
                 {[
                   'Todos',
                   'Em operação',
@@ -2016,24 +1266,15 @@ export default function Tower(){
                   'Finalizados',
                   'Cancelados',
                   'Fim previsto vencido'
-                ].map(
-                  t=>(
-                    <button
-                      className={
-                        shipTab===t
-                          ?'selected'
-                          :''
-                      }
-                      key={t}
-                      onClick={
-                        ()=>setShipTab(t)
-                      }
-                    >
-                      {t}
-                    </button>
-                  )
-                )}
-
+                ].map(tab=>(
+                  <button
+                    className={shipTab===tab?'selected':''}
+                    key={tab}
+                    onClick={()=>setShipTab(tab)}
+                  >
+                    {tab}
+                  </button>
+                ))}
               </div>
 
               <Panel
@@ -2044,217 +1285,135 @@ export default function Tower(){
                   </span>
                 }
               >
-
                 <div className="table-wrap">
-
                   <table>
-
                     <thead>
                       <tr>
-                        <th>
-                          Navio / berço
-                        </th>
-                        <th>
-                          Início
-                        </th>
-                        <th>
-                          Fim previsto / real
-                        </th>
-                        <th>
-                          Situação
-                        </th>
-                        <th>
-                          DDS atual
-                        </th>
-                        <th>
-                          Ações
-                        </th>
+                        <th>Navio / berço</th>
+                        <th>Início</th>
+                        <th>Fim previsto / real</th>
+                        <th>Situação</th>
+                        <th>DDS atual</th>
+                        <th>Ações</th>
                       </tr>
                     </thead>
 
                     <tbody>
-
                       {s.ships
-                        .filter(
-                          v=>
-                            !v.deleted &&
-                            (
-                              shipTab==='Todos' ||
-                              shipState(v)===shipTab
-                            )
-                        )
-                        .map(
-                          v=>(
-                            <tr key={v.id}>
-
-                              <td>
-
-                                <strong>
-                                  {v.name}
-                                </strong>
-
-                                <small>
-                                  Berço {v.berth}
-                                </small>
-
-                                {v.source && (
-                                  <small>
-                                    Importado dos e-mails
-                                  </small>
-                                )}
-
-                                {!!v.review?.length && (
-                                  <small className="review-flag">
-                                    Conferir estimativas
-                                  </small>
-                                )}
-
-                              </td>
-
-                              <td>
-
-                                {fmtDate(
-                                  v.start.slice(
-                                    0,
-                                    10
-                                  )
-                                )}
-
-                                <small>
-                                  {v.start.slice(
-                                    11,
-                                    16
-                                  )}
-                                </small>
-
-                              </td>
-
-                              <td>
-
-                                {fmtDate(
-                                  (
-                                    v.actualEnd ||
-                                    v.end
-                                  ).slice(
-                                    0,
-                                    10
-                                  )
-                                )}
-
-                                <small>
-                                  {
-                                    (
-                                      v.actualEnd ||
-                                      v.end
-                                    ).slice(
-                                      11,
-                                      16
-                                    )
-                                  }
-
-                                  {' '}
-
-                                  {v.actualEnd
-                                    ?'• saída real'
-                                    :''}
-                                </small>
-
-                              </td>
-
-                              <td>
-                                {shipState(v)}
-                              </td>
-
-                              <td>
-
-                                {shipRows.find(
-                                  r=>
-                                    r.entityId===v.id
-                                )
-                                  ?
-                                    <>
-
-                                      <Badge
-                                        text={
-                                          shipRows.find(
-                                            r=>
-                                              r.entityId===v.id &&
-                                              !r.record
-                                          )?.status ||
-                                          shipRows.find(
-                                            r=>
-                                              r.entityId===v.id
-                                          )!.status
-                                        }
-                                      />
-
-                                      <small>
-                                        {
-                                          score(
-                                            shipRows.filter(
-                                              r=>
-                                                r.entityId===v.id
-                                            )
-                                          ).done
-                                        }
-                                        {' / '}
-                                        {
-                                          score(
-                                            shipRows.filter(
-                                              r=>
-                                                r.entityId===v.id
-                                            )
-                                          ).total
-                                        }
-                                        {' '}
-                                        DDS
-                                      </small>
-
-                                    </>
-                                  :
-                                    <span className="meta">
-                                      Não esperado
-                                    </span>}
-
-                              </td>
-
-                              <td>
-                                <button
-                                  onClick={
-                                    ()=>
-                                      setModal({
-                                        kind:'ship',
-                                        ship:v
-                                      })
-                                  }
-                                >
-                                  Gerenciar
-                                </button>
-                              </td>
-
-                            </tr>
+                        .filter(v=>
+                          !v.deleted&&
+                          (
+                            shipTab==='Todos'||
+                            shipState(v)===shipTab
                           )
-                        )}
+                        )
+                        .map(v=>(
+                          <tr key={v.id}>
+                            <td>
+                              <strong>{v.name}</strong>
 
+                              <small>
+                                Berço {v.berth}
+                              </small>
+
+                              {v.source&&(
+                                <small>
+                                  Importado dos e-mails
+                                </small>
+                              )}
+
+                              {!!v.review?.length&&(
+                                <small className="review-flag">
+                                  Conferir estimativas
+                                </small>
+                              )}
+                            </td>
+
+                            <td>
+                              {fmtDate(v.start.slice(0,10))}
+                              <small>{v.start.slice(11,16)}</small>
+                            </td>
+
+                            <td>
+                              {fmtDate((v.actualEnd||v.end).slice(0,10))}
+                              <small>
+                                {(v.actualEnd||v.end).slice(11,16)}
+                                {' '}
+                                {v.actualEnd?'• saída real':''}
+                              </small>
+                            </td>
+
+                            <td>{shipState(v)}</td>
+
+                            <td>
+                              {shipRows.find(r=>r.entityId===v.id)
+                                ?(
+                                  <>
+                                    <Badge
+                                      text={
+                                        shipRows.find(
+                                          r=>r.entityId===v.id&&!r.record
+                                        )?.status||
+                                        shipRows.find(
+                                          r=>r.entityId===v.id
+                                        )!.status
+                                      }
+                                    />
+
+                                    <small>
+                                      {
+                                        score(
+                                          shipRows.filter(
+                                            r=>r.entityId===v.id
+                                          )
+                                        ).done
+                                      }
+                                      {' / '}
+                                      {
+                                        score(
+                                          shipRows.filter(
+                                            r=>r.entityId===v.id
+                                          )
+                                        ).total
+                                      }
+                                      {' '}
+                                      DDS
+                                    </small>
+                                  </>
+                                )
+                                :(
+                                  <span className="meta">
+                                    Não esperado
+                                  </span>
+                                )}
+                            </td>
+
+                            <td>
+                              <button
+                                onClick={()=>setModal({
+                                  kind:'ship',
+                                  ship:v
+                                })}
+                              >
+                                Gerenciar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
-
                   </table>
 
-                  {!s.ships.some(
-                    v=>
-                      !v.deleted &&
-                      (
-                        shipTab==='Todos' ||
-                        shipState(v)===shipTab
-                      )
-                  ) && (
+                  {!s.ships.some(v=>
+                    !v.deleted&&
+                    (
+                      shipTab==='Todos'||
+                      shipState(v)===shipTab
+                    )
+                  )&&(
                     <div className="empty">
-
                       <ShipIcon size={32}/>
 
-                      <h3>
-                        Nenhum navio nesta seleção
-                      </h3>
+                      <h3>Nenhum navio nesta seleção</h3>
 
                       <p>
                         Cadastre manualmente ou importe a programação de navios.
@@ -2262,79 +1421,21 @@ export default function Tower(){
 
                       <button
                         className="primary"
-                        onClick={
-                          ()=>
-                            setModal({
-                              kind:'ship'
-                            })
-                        }
+                        onClick={()=>setModal({
+                          kind:'ship'
+                        })}
                       >
                         <Plus size={17}/>
                         Novo navio
                       </button>
-
                     </div>
                   )}
-
                 </div>
-
               </Panel>
 
               <Panel title="Histórico de alterações">
-
                 {s.audit
-                  .filter(
-                    a=>
-                      [
-                        'ship',
-                        'finish',
-                        'cancel',
-                        'delete',
-                        'import-emails',
-                        'import-files'
-                      ].includes(
-                        a.action
-                      )
-                  )
-                  .map(
-                    (a,i)=>(
-                      <div
-                        className="audit"
-                        key={i}
-                      >
-
-                        <Clock size={16}/>
-
-                        <div>
-
-                          <strong>
-                            {a.detail}
-                          </strong>
-
-                          <small>
-                            {fmtDate(
-                              a.at.slice(
-                                0,
-                                10
-                              )
-                            )}
-                            {' '}
-                            {a.at.slice(
-                              11,
-                              16
-                            )}
-                            {' · '}
-                            {a.user}
-                          </small>
-
-                        </div>
-
-                      </div>
-                    )
-                  )}
-
-                {!s.audit.some(
-                  a=>
+                  .filter(a=>
                     [
                       'ship',
                       'finish',
@@ -2342,76 +1443,87 @@ export default function Tower(){
                       'delete',
                       'import-emails',
                       'import-files'
-                    ].includes(
-                      a.action
-                    )
-                ) && (
+                    ].includes(a.action)
+                  )
+                  .map((a,i)=>(
+                    <div
+                      className="audit"
+                      key={i}
+                    >
+                      <Clock size={16}/>
+
+                      <div>
+                        <strong>{a.detail}</strong>
+
+                        <small>
+                          {fmtDate(a.at.slice(0,10))}
+                          {' '}
+                          {a.at.slice(11,16)}
+                          {' · '}
+                          {a.user}
+                        </small>
+                      </div>
+                    </div>
+                  ))}
+
+                {!s.audit.some(a=>
+                  [
+                    'ship',
+                    'finish',
+                    'cancel',
+                    'delete',
+                    'import-emails',
+                    'import-files'
+                  ].includes(a.action)
+                )&&(
                   <div className="empty compact">
                     As alterações na programação ficarão registradas aqui.
                   </div>
                 )}
-
               </Panel>
-
             </>
           )}
 
-          {view==='PENDÊNCIAS' && (
+          {view==='PENDÊNCIAS'&&(
             <>
-
               <div className="summary-strip">
-
                 <div>
-                  <strong>
-                    {pending.length}
-                  </strong>
-                  <span>
-                    Pendências do dia
-                  </span>
+                  <strong>{pending.length}</strong>
+                  <span>Pendências do dia</span>
                 </div>
 
                 <div>
                   <strong>
                     {
                       pending.filter(
-                        r=>
-                          r.status==='Atrasado'
+                        r=>r.status==='Atrasado'
                       ).length
                     }
                   </strong>
-                  <span>
-                    DDS atrasados
-                  </span>
+                  <span>DDS atrasados</span>
                 </div>
 
                 <div>
                   <strong>
                     {
                       pending.filter(
-                        r=>
-                          r.status==='Realizado com pendência'
+                        r=>r.status==='Realizado com pendência'
                       ).length
                     }
                   </strong>
-                  <span>
-                    Registros incompletos
-                  </span>
+                  <span>Registros incompletos</span>
                 </div>
 
                 <div>
                   <strong>
                     {
                       all.filter(
-                        r=>
-                          r.status==='Justificado'
+                        r=>r.status==='Justificado'
                       ).length
                     }
                   </strong>
-                  <span>
-                    Justificados
-                  </span>
+                  <span>Justificados</span>
                 </div>
-
               </div>
 
               <Panel
@@ -2428,226 +1540,176 @@ export default function Tower(){
               <Panel title="Ocorrências justificadas">
                 {obligationTable(
                   all.filter(
-                    r=>
-                      r.status==='Justificado'
+                    r=>r.status==='Justificado'
                   )
                 )}
               </Panel>
 
               <p className="footnote">
-                Justificativas preservam a ocorrência no histórico. Não contam como DDS realizado nem retiram a obrigação do denominador nesta versão.
+                Justificativas preservam a ocorrência no histórico. Não contam como DDS realizado nem retiram a obrigação do denominador.
               </p>
-
             </>
           )}
 
-          {view==='HISTÓRICO' && (
+          {view==='HISTÓRICO'&&(
             <>
-
               <div className="filters">
-
                 <div className="search">
-
                   <Search size={18}/>
 
                   <input
-                    placeholder="Buscar navio, equipe, aplicador ou tema"
+                    placeholder="Buscar setor, navio, equipe, aplicador ou tema"
                     value={q}
-                    onChange={
-                      e=>
-                        setQ(
-                          e.target.value
-                        )
-                    }
+                    onChange={e=>setQ(e.target.value)}
                   />
-
                 </div>
 
                 <select
                   aria-label="Filtrar tipo"
                   value={type}
-                  onChange={
-                    e=>
-                      setType(
-                        e.target.value
-                      )
-                  }
+                  onChange={e=>setType(e.target.value)}
                 >
                   {[
                     'Todos',
                     ...TYPES
-                  ].map(
-                    t=>(
-                      <option key={t}>
-                        {t}
-                      </option>
-                    )
-                  )}
+                  ].map(t=>(
+                    <option key={t}>
+                      {t}
+                    </option>
+                  ))}
                 </select>
 
-                <button
-                  onClick={exportCSV}
-                >
+                <button onClick={exportCSV}>
                   <Download size={17}/>
                   Exportar CSV
                 </button>
 
+                <button
+                  disabled={busy||s.records.length===0}
+                  onClick={()=>setModal({
+                    kind:'clear-history',
+                    count:s.records.length
+                  })}
+                >
+                  <Trash2 size={17}/>
+                  Limpar histórico
+                </button>
               </div>
 
               <Panel
                 title="Respostas registradas"
                 extra={
                   <span className="meta">
-                    {visibleRecords.length} registros · mais recentes primeiro
+                    {visibleRecords.length} registros do setor Operações · mais recentes primeiro
                   </span>
                 }
               >
-
                 <div className="table-wrap">
-
                   <table>
-
                     <thead>
                       <tr>
-                        <th>
-                          Aplicação
-                        </th>
-                        <th>
-                          Referência
-                        </th>
-                        <th>
-                          Período informado
-                        </th>
-                        <th>
-                          Qualidade
-                        </th>
-                        <th>
-                          Aplicador
-                        </th>
+                        <th>Aplicação</th>
+                        <th>Setor</th>
+                        <th>Tipo do DDS</th>
+                        <th>Referência</th>
+                        <th>Período informado</th>
+                        <th>Qualidade</th>
+                        <th>Aplicador</th>
                         <th/>
                       </tr>
                     </thead>
 
                     <tbody>
+                      {visibleRecords.map(r=>(
+                        <tr key={r.id}>
+                          <td>
+                            {fmtDate(r.date)}
+                            <small>{fmtTime(r.applied)}</small>
+                          </td>
 
-                      {visibleRecords.map(
-                        r=>(
-                          <tr key={r.id}>
+                          <td>
+                            <strong>{r.sector||'Não informado'}</strong>
+                          </td>
 
-                            <td>
-                              {fmtDate(r.date)}
+                          <td>
+                            <strong>{r.type||'Tipo não informado'}</strong>
+                          </td>
 
-                              <small>
-                                {fmtTime(r.applied)}
-                              </small>
-                            </td>
+                          <td>
+                            <strong>
+                              {r.type==='NAVIO'
+                                ?r.ship||'Navio não informado'
+                                :r.type
+                                  ?'Equipe '+r.type
+                                  :'Não informado'}
+                            </strong>
 
-                            <td>
+                            <small>{r.source}</small>
+                          </td>
 
-                              <strong>
-                                {r.type==='NAVIO'
-                                  ?r.ship
-                                  :r.type ||
-                                   'Tipo não informado'}
-                              </strong>
+                          <td>{r.period}</td>
 
-                              <small>
-                                {r.source}
-                              </small>
+                          <td>
+                            <Badge
+                              text={
+                                !validRecord(r,s.settings)
+                                  ?'Revisar classificação'
+                                  :issues(r,s).length
+                                    ?'Realizado com pendência'
+                                    :'Realizado'
+                              }
+                            />
 
-                            </td>
-
-                            <td>
-                              {r.period}
-                            </td>
-
-                            <td>
-
-                              <Badge
-                                text={
-                                  !validRecord(
+                            {reviewReasons(r,s.settings).length>0&&(
+                              <small className="review-flag">
+                                {
+                                  reviewReasons(
                                     r,
                                     s.settings
-                                  )
-                                    ?'Revisar classificação'
-                                    :issues(
-                                       r,
-                                       s
-                                     ).length
-                                      ?'Realizado com pendência'
-                                      :'Realizado'
+                                  ).join(' · ')
                                 }
-                              />
+                              </small>
+                            )}
 
-                              {reviewReasons(
-                                r,
-                                s.settings
-                              ).length>0 && (
-                                <small className="review-flag">
-                                  {
-                                    reviewReasons(
-                                      r,
-                                      s.settings
-                                    ).join(' · ')
-                                  }
-                                </small>
-                              )}
+                            {unmatched.some(x=>x.id===r.id)&&(
+                              <small>
+                                Sem vínculo com programação
+                              </small>
+                            )}
+                          </td>
 
-                              {unmatched.some(
-                                x=>
-                                  x.id===r.id
-                              ) && (
-                                <small>
-                                  Sem vínculo com programação
-                                </small>
-                              )}
+                          <td>{r.applicator}</td>
 
-                            </td>
-
-                            <td>
-                              {r.applicator}
-                            </td>
-
-                            <td>
-                              <button
-                                onClick={
-                                  ()=>
-                                    setModal({
-                                      kind:'detail',
-                                      record:r
-                                    })
-                                }
-                              >
-                                Ver registro
-                              </button>
-                            </td>
-
-                          </tr>
-                        )
-                      )}
-
+                          <td>
+                            <button
+                              onClick={()=>setModal({
+                                kind:'detail',
+                                record:r
+                              })}
+                            >
+                              Ver registro
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
-
                   </table>
 
-                  {!visibleRecords.length && (
+                  {!visibleRecords.length&&(
                     <div className="empty">
-                      Nenhum registro encontrado.
+                      Nenhum registro do setor Operações encontrado.
                     </div>
                   )}
-
                 </div>
-
               </Panel>
 
               <p className="footnote">
-                O período selecionado no formulário prevalece sobre o horário de aplicação. Registros sem tipo ou com período incompatível ficam para revisão.
+                Somente respostas do setor Operações são exibidas e consideradas nos indicadores operacionais.
               </p>
-
             </>
           )}
 
-          {view==='ADERÊNCIA' && (
+          {view==='ADERÊNCIA'&&(
             <AdherenceView
               state={s}
               date={date}
@@ -2655,57 +1717,45 @@ export default function Tower(){
             />
           )}
 
-          {tv && (
+          {tv&&(
             <DayDashboard
               state={s}
               date={date}
               now={now}
-              onOpen={
-                item=>
-                  setModal({
-                    kind:'obligation',
-                    item
-                  })
-              }
-              onPeriod={
-                i=>{
-                  setPeriod(i);
-                  navigate('HOJE');
-                }
-              }
+              onOpen={item=>setModal({
+                kind:'obligation',
+                item
+              })}
+              onPeriod={i=>{
+                setPeriod(i);
+                navigate('HOJE');
+              }}
             />
           )}
 
-          {view==='CONFIGURAÇÕES' && (
+          {view==='CONFIGURAÇÕES'&&(
             <div className="config-grid">
-
               <Panel
                 title="Regras e períodos"
                 className="rules-panel"
               >
-
                 <RulesEditor
                   key={rev}
                   settings={s.settings}
                   busy={busy}
-                  onSave={
-                    settings=>{
-                      setPeriod(0);
+                  onSave={settings=>{
+                    setPeriod(0);
 
-                      save({
-                        action:'settings',
-                        settings
-                      });
-                    }
-                  }
+                    save({
+                      action:'settings',
+                      settings
+                    });
+                  }}
                 />
-
               </Panel>
 
               <Panel title="Legenda de status">
-
                 <div className="settings-body status-list">
-
                   {[
                     'Não iniciado',
                     'Aguardando',
@@ -2713,66 +1763,51 @@ export default function Tower(){
                     'Realizado',
                     'Realizado com pendência',
                     'Justificado'
-                  ].map(
-                    (v,i)=>(
-                      <div key={v}>
+                  ].map((value,i)=>(
+                    <div key={value}>
+                      <Badge text={value}/>
 
-                        <Badge text={v}/>
-
-                        <span>
-                          {
-                            [
-                              'Antes do início da obrigação',
-                              'Dentro da tolerância',
-                              'Prazo vencido, sem DDS',
-                              'Registro com campos completos',
-                              'Registro com informação faltante',
-                              'Ocorrência com motivo registrado'
-                            ][i]
-                          }
-                        </span>
-
-                      </div>
-                    )
-                  )}
-
+                      <span>
+                        {
+                          [
+                            'Antes do início da obrigação',
+                            'Dentro da tolerância',
+                            'Prazo vencido, sem DDS',
+                            'Registro com campos completos',
+                            'Registro com informação faltante',
+                            'Ocorrência com motivo registrado'
+                          ][i]
+                        }
+                      </span>
+                    </div>
+                  ))}
                 </div>
-
               </Panel>
 
-              {legacyTestRecords.length>0 && (
+              {legacyTestRecords.length>0&&(
                 <Panel title="Limpeza de produção">
-
                   <div className="settings-body">
-
                     <p>
                       {legacyTestRecords.length} registro(s) legado(s) de teste ainda estão armazenados no Firestore.
                     </p>
 
                     <p className="meta">
-                      A limpeza remove apenas registros com origem “Excel de teste” ou “Registro manual de teste”. Registros atuais da Hashdata API não são removidos.
+                      A limpeza remove apenas registros com origem Excel de teste ou Registro manual de teste.
                     </p>
 
                     <button
                       className="primary"
                       disabled={busy}
-                      onClick={
-                        ()=>
-                          setModal({
-                            kind:'cleanup-test',
-                            count:
-                              legacyTestRecords.length
-                          })
-                      }
+                      onClick={()=>setModal({
+                        kind:'cleanup-test',
+                        count:legacyTestRecords.length
+                      })}
                     >
                       Remover dados legados de teste
                     </button>
-
                   </div>
-
                 </Panel>
               )}
-
             </div>
           )}
 
@@ -2785,47 +1820,36 @@ export default function Tower(){
               Período informado no formulário · Horário de Brasília
             </span>
           </footer>
-
         </div>
-
       </main>
 
-      {modal && (
+      {modal&&(
         <Modal
           title={
             modal.kind==='ship'
-              ?
-                (
-                  modal.ship
-                    ?'Gerenciar navio'
-                    :'Novo navio'
-                )
-              :
-                modal.kind==='import'
-                  ?'Importar programação dos e-mails'
-                  :
-                    modal.kind==='record'
-                      ?'Registrar DDS'
-                      :
-                        modal.kind==='cleanup-test'
-                          ?'Remover dados legados de teste'
-                          :
-                            modal.kind==='confirm'
-                              ?'Confirmar alteração'
-                              :
-                                modal.kind==='justify'
-                                  ?'Justificar ocorrência'
-                                  :'Detalhes do DDS'
+              ?modal.ship
+                ?'Gerenciar navio'
+                :'Novo navio'
+              :modal.kind==='import'
+                ?'Importar programação dos e-mails'
+                :modal.kind==='record'
+                  ?'Registrar DDS'
+                  :modal.kind==='cleanup-test'
+                    ?'Remover dados legados de teste'
+                    :modal.kind==='clear-history'
+                      ?'Limpar histórico'
+                      :modal.kind==='confirm'
+                        ?'Confirmar alteração'
+                        :modal.kind==='justify'
+                          ?'Justificar ocorrência'
+                          :'Detalhes do DDS'
           }
-          close={
-            ()=>{
-              setModal(null);
-              setError('');
-            }
-          }
+          close={()=>{
+            setModal(null);
+            setError('');
+          }}
         >
-
-          {error && (
+          {error&&(
             <div
               role="alert"
               className="alert danger"
@@ -2834,37 +1858,61 @@ export default function Tower(){
             </div>
           )}
 
-          {modal.kind==='import' && (
+          {modal.kind==='import'&&(
             <EmailImporter
               ships={s.ships}
               busy={busy}
-              onSave={
-                ships=>
-                  save({
-                    action:'import-files',
-                    ships
-                  })
-              }
+              onSave={ships=>save({
+                action:'import-files',
+                ships
+              })}
             />
           )}
 
-          {modal.kind==='cleanup-test' && (
+          {modal.kind==='clear-history'&&(
             <div className="settings-body">
+              <p>
+                Esta ação removerá todos os registros DDS armazenados no histórico e todas as justificativas.
+              </p>
 
+              <p className="meta">
+                Navios, configurações e regras operacionais serão preservados.
+                Uma nova sincronização da Hashdata poderá importar novamente respostas ainda presentes na janela consultada.
+              </p>
+
+              <div className="modal-actions">
+                <button
+                  onClick={()=>setModal(null)}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  className="primary"
+                  disabled={busy}
+                  onClick={()=>save({
+                    action:'clear-history'
+                  })}
+                >
+                  Limpar histórico
+                </button>
+              </div>
+            </div>
+          )}
+
+          {modal.kind==='cleanup-test'&&(
+            <div className="settings-body">
               <p>
                 Remover {modal.count} registro(s) legado(s) de teste do Firestore?
               </p>
 
               <p className="meta">
-                Serão removidos somente registros com origem “Excel de teste” ou “Registro manual de teste”. A sincronização atual da Hashdata será preservada.
+                A sincronização atual da Hashdata será preservada.
               </p>
 
               <div className="modal-actions">
-
                 <button
-                  onClick={
-                    ()=>setModal(null)
-                  }
+                  onClick={()=>setModal(null)}
                 >
                   Voltar
                 </button>
@@ -2872,56 +1920,42 @@ export default function Tower(){
                 <button
                   className="primary"
                   disabled={busy}
-                  onClick={
-                    ()=>
-                      save({
-                        action:'cleanup-test-data'
-                      })
-                  }
+                  onClick={()=>save({
+                    action:'cleanup-test-data'
+                  })}
                 >
                   Confirmar limpeza
                 </button>
-
               </div>
-
             </div>
           )}
 
-          {modal.kind==='ship' && (
+          {modal.kind==='ship'&&(
             <form
-              onSubmit={
-                e=>{
-                  e.preventDefault();
+              onSubmit={e=>{
+                e.preventDefault();
 
-                  const f=
-                    Object.fromEntries(
-                      new FormData(
-                        e.currentTarget
-                      )
-                    );
+                const form=Object.fromEntries(
+                  new FormData(e.currentTarget)
+                );
 
-                  save({
-                    action:'ship',
-
-                    ship:{
-                      ...f,
-                      id:
-                        modal.ship?.id
-                    }
-                  });
-                }
-              }
+                save({
+                  action:'ship',
+                  ship:{
+                    ...form,
+                    id:modal.ship?.id
+                  }
+                });
+              }}
             >
-
               <div className="form-grid">
-
                 <Field label="Nome do navio">
                   <input
                     name="name"
                     required
                     defaultValue={
-                      modal.ship?.name ||
-                      modal.name ||
+                      modal.ship?.name||
+                      modal.name||
                       ''
                     }
                   />
@@ -2931,10 +1965,7 @@ export default function Tower(){
                   <input
                     name="berth"
                     required
-                    defaultValue={
-                      modal.ship?.berth ||
-                      ''
-                    }
+                    defaultValue={modal.ship?.berth||''}
                   />
                 </Field>
 
@@ -2944,12 +1975,7 @@ export default function Tower(){
                     type="datetime-local"
                     required
                     defaultValue={
-                      modal.ship
-                        ?.start
-                        ?.slice(
-                          0,
-                          16
-                        ) ||
+                      modal.ship?.start?.slice(0,16)||
                       date+'T13:00'
                     }
                   />
@@ -2961,62 +1987,43 @@ export default function Tower(){
                     type="datetime-local"
                     required
                     defaultValue={
-                      modal.ship
-                        ?.end
-                        ?.slice(
-                          0,
-                          16
-                        ) ||
+                      modal.ship?.end?.slice(0,16)||
                       date+'T23:00'
                     }
                   />
                 </Field>
 
                 <div className="span2">
-
                   <Field label="Observação">
                     <textarea
                       name="note"
-                      defaultValue={
-                        modal.ship?.note ||
-                        ''
-                      }
+                      defaultValue={modal.ship?.note||''}
                     />
                   </Field>
 
-                  {modal.ship?.source && (
+                  {modal.ship?.source&&(
                     <p className="meta">
                       Fonte: {modal.ship.source} · Início: {modal.ship.startBasis}
                     </p>
                   )}
 
-                  {modal.ship
-                    ?.review
-                    ?.map(
-                      (
-                        x:string,
-                        i:number
-                      )=>(
-                        <small
-                          className="review-flag"
-                          key={i}
-                        >
-                          {x}
-                        </small>
-                      )
-                    )}
-
+                  {modal.ship?.review?.map(
+                    (item:string,i:number)=>(
+                      <small
+                        className="review-flag"
+                        key={i}
+                      >
+                        {item}
+                      </small>
+                    )
+                  )}
                 </div>
-
               </div>
 
               <div className="modal-actions">
-
                 <button
                   type="button"
-                  onClick={
-                    ()=>setModal(null)
-                  }
+                  onClick={()=>setModal(null)}
                 >
                   Voltar
                 </button>
@@ -3024,74 +2031,59 @@ export default function Tower(){
                 <button
                   className="primary"
                   disabled={
-                    busy ||
+                    busy||
                     (
-                      modal.ship &&
+                      modal.ship&&
                       modal.ship.status!=='Ativo'
                     )
                   }
                 >
                   Salvar navio
                 </button>
-
               </div>
 
-              {modal.ship && (
+              {modal.ship&&(
                 <div className="operation-actions">
-
                   {[
                     'finish',
                     'cancel',
                     'delete'
-                  ].map(
-                    (
-                      action,
-                      i
-                    )=>(
-                      <button
-                        key={action}
-                        type="button"
-                        disabled={
-                          busy ||
-                          (
-                            action!=='delete' &&
-                            modal.ship.status!=='Ativo'
-                          )
-                        }
-                        onClick={
-                          ()=>
-                            setModal({
-                              kind:'confirm',
-                              action,
-                              id:modal.ship.id,
-                              name:modal.ship.name
-                            })
-                        }
-                      >
-                        {
-                          [
-                            'Finalizar agora',
-                            'Cancelar operação',
-                            'Excluir cadastro'
-                          ][i]
-                        }
-                      </button>
-                    )
-                  )}
-
+                  ].map((action,i)=>(
+                    <button
+                      key={action}
+                      type="button"
+                      disabled={
+                        busy||
+                        (
+                          action!=='delete'&&
+                          modal.ship.status!=='Ativo'
+                        )
+                      }
+                      onClick={()=>setModal({
+                        kind:'confirm',
+                        action,
+                        id:modal.ship.id,
+                        name:modal.ship.name
+                      })}
+                    >
+                      {
+                        [
+                          'Finalizar agora',
+                          'Cancelar operação',
+                          'Excluir cadastro'
+                        ][i]
+                      }
+                    </button>
+                  ))}
                 </div>
               )}
-
             </form>
           )}
 
-          {modal.kind==='confirm' && (
+          {modal.kind==='confirm'&&(
             <div className="settings-body">
-
               <p>
-                <strong>
-                  {modal.name}
-                </strong>
+                <strong>{modal.name}</strong>
               </p>
 
               <p>
@@ -3103,105 +2095,76 @@ export default function Tower(){
               </p>
 
               <div className="modal-actions">
-
-                <button
-                  onClick={
-                    ()=>setModal(null)
-                  }
-                >
+                <button onClick={()=>setModal(null)}>
                   Voltar
                 </button>
 
                 <button
                   disabled={busy}
                   className="primary"
-                  onClick={
-                    ()=>
-                      save({
-                        action:modal.action,
-                        id:modal.id
-                      })
-                  }
+                  onClick={()=>save({
+                    action:modal.action,
+                    id:modal.id
+                  })}
                 >
                   Confirmar
                 </button>
-
               </div>
-
             </div>
           )}
 
-          {modal.kind==='record' && (
+          {modal.kind==='record'&&(
             <form
-              onSubmit={
-                e=>{
-                  e.preventDefault();
+              onSubmit={e=>{
+                e.preventDefault();
 
-                  const f=
-                    new FormData(
-                      e.currentTarget
-                    );
+                const form=new FormData(
+                  e.currentTarget
+                );
 
-                  save({
-                    action:'record',
-
-                    record:{
-                      ...Object.fromEntries(
-                        f
-                      ),
-
-                      id:
-                        modal.record.id,
-
-                      photo:
-                        f.has('photo'),
-
-                      signature:
-                        f.has('signature')
-                    }
-                  });
-                }
-              }
+                save({
+                  action:'record',
+                  record:{
+                    ...Object.fromEntries(form),
+                    id:modal.record.id,
+                    sector:'Operações',
+                    photo:form.has('photo'),
+                    signature:form.has('signature')
+                  }
+                });
+              }}
             >
-
               <div className="form-grid">
+                <Field label="Setor">
+                  <input
+                    value="Operações"
+                    disabled
+                  />
+                </Field>
 
                 <Field label="Tipo de DDS">
-
                   <select
                     name="type"
                     required
                     value={recordType}
-                    onChange={
-                      e=>
-                        setRecordType(
-                          e.target.value
-                        )
-                    }
+                    onChange={e=>setRecordType(e.target.value)}
                   >
-
                     <option value="">
                       Selecione
                     </option>
 
-                    {TYPES.map(
-                      t=>(
-                        <option key={t}>
-                          {t}
-                        </option>
-                      )
-                    )}
-
+                    {TYPES.map(t=>(
+                      <option key={t}>
+                        {t}
+                      </option>
+                    ))}
                   </select>
-
                 </Field>
 
                 <Field label="Nome do navio (para NAVIO)">
                   <input
                     name="ship"
-                    defaultValue={
-                      modal.record.ship
-                    }
+                    defaultValue={modal.record.ship}
                   />
                 </Field>
 
@@ -3211,37 +2174,24 @@ export default function Tower(){
                     type="date"
                     required
                     value={recordDate}
-                    onChange={
-                      e=>
-                        setRecordDate(
-                          e.target.value
-                        )
-                    }
+                    onChange={e=>setRecordDate(e.target.value)}
                   />
                 </Field>
 
                 <Field label="Período informado">
-
                   <select
-                    key={
-                      recordType+
-                      '-'+
-                      recordDate
-                    }
+                    key={recordType+'-'+recordDate}
                     name="period"
                     required
                     defaultValue={
                       typePeriods(
                         recordType,
                         recordDate
-                      ).includes(
-                        modal.record.period
-                      )
+                      ).includes(modal.record.period)
                         ?modal.record.period
                         :''
                     }
                   >
-
                     <option value="">
                       Selecione
                     </option>
@@ -3249,16 +2199,12 @@ export default function Tower(){
                     {typePeriods(
                       recordType,
                       recordDate
-                    ).map(
-                      p=>(
-                        <option key={p}>
-                          {p}
-                        </option>
-                      )
-                    )}
-
+                    ).map(p=>(
+                      <option key={p}>
+                        {p}
+                      </option>
+                    ))}
                   </select>
-
                 </Field>
 
                 <Field label="Data e hora da aplicação">
@@ -3267,12 +2213,7 @@ export default function Tower(){
                     type="datetime-local"
                     required
                     defaultValue={
-                      modal.record
-                        .applied
-                        ?.slice(
-                          0,
-                          16
-                        )
+                      modal.record.applied?.slice(0,16)
                     }
                   />
                 </Field>
@@ -3280,71 +2221,50 @@ export default function Tower(){
                 <Field label="Aplicador">
                   <input
                     name="applicator"
-                    defaultValue={
-                      modal.record.applicator
-                    }
+                    defaultValue={modal.record.applicator}
                   />
                 </Field>
 
                 <Field label="Supervisor">
                   <input
                     name="supervisor"
-                    defaultValue={
-                      modal.record.supervisor
-                    }
+                    defaultValue={modal.record.supervisor}
                   />
                 </Field>
 
                 <Field label="Participantes">
                   <textarea
                     name="participants"
-                    defaultValue={
-                      modal.record.participants
-                    }
+                    defaultValue={modal.record.participants}
                   />
                 </Field>
 
                 <div className="span2">
-
                   <Field label="Temas abordados">
                     <textarea
                       name="topics"
-                      defaultValue={
-                        modal.record.topics
-                      }
+                      defaultValue={modal.record.topics}
                     />
                   </Field>
-
                 </div>
 
                 <label className="check">
-
                   <input
                     type="checkbox"
                     name="photo"
-                    defaultChecked={
-                      modal.record.photo
-                    }
+                    defaultChecked={modal.record.photo}
                   />
-
                   Foto informada
-
                 </label>
 
                 <label className="check">
-
                   <input
                     type="checkbox"
                     name="signature"
-                    defaultChecked={
-                      modal.record.signature
-                    }
+                    defaultChecked={modal.record.signature}
                   />
-
                   Assinatura informada
-
                 </label>
-
               </div>
 
               <p className="form-note">
@@ -3352,12 +2272,9 @@ export default function Tower(){
               </p>
 
               <div className="modal-actions">
-
                 <button
                   type="button"
-                  onClick={
-                    ()=>setModal(null)
-                  }
+                  onClick={()=>setModal(null)}
                 >
                   Voltar
                 </button>
@@ -3368,36 +2285,25 @@ export default function Tower(){
                 >
                   Salvar DDS
                 </button>
-
               </div>
-
             </form>
           )}
 
-          {modal.kind==='justify' && (
+          {modal.kind==='justify'&&(
             <form
               className="settings-body"
-              onSubmit={
-                e=>{
-                  e.preventDefault();
+              onSubmit={e=>{
+                e.preventDefault();
 
-                  save({
-                    action:'justify',
-
-                    key:
-                      modal.item.key,
-
-                    reason:
-                      new FormData(
-                        e.currentTarget
-                      ).get(
-                        'reason'
-                      )
-                  });
-                }
-              }
+                save({
+                  action:'justify',
+                  key:modal.item.key,
+                  reason:new FormData(
+                    e.currentTarget
+                  ).get('reason')
+                });
+              }}
             >
-
               <p>
                 {modal.item.reference} · {modal.item.period}
               </p>
@@ -3412,229 +2318,156 @@ export default function Tower(){
               </Field>
 
               <div className="modal-actions">
-
                 <button
                   className="primary"
                   disabled={busy}
                 >
                   Salvar justificativa
                 </button>
-
               </div>
-
             </form>
           )}
 
           {[
             'obligation',
             'detail'
-          ].includes(
-            modal.kind
-          ) &&
+          ].includes(modal.kind)&&
           (()=>{
 
-            const r:
-              RecordDDS|undefined=
-              modal.record ||
+            const record:RecordDDS|undefined=
+              modal.record||
               modal.item?.record;
 
-            const item:
-              Obligation|undefined=
+            const item:Obligation|undefined=
               modal.item;
 
             return (
               <div className="settings-body">
-
-                {item && (
+                {item&&(
                   <>
+                    <h3>{item.reference}</h3>
 
-                    <h3>
-                      {item.reference}
-                    </h3>
-
-                    <Badge
-                      text={
-                        item.status
-                      }
-                    />
+                    <Badge text={item.status}/>
 
                     <p>
                       {fmtDate(item.date)} · {item.period} · Prazo {fmtTime(item.due)}
                     </p>
 
-                    {item.reason && (
+                    {item.reason&&(
                       <p>
-                        <strong>
-                          Justificativa:
-                        </strong>
+                        <strong>Justificativa:</strong>
                         {' '}
                         {item.reason}
                       </p>
                     )}
-
                   </>
                 )}
 
-                {r && (
+                {record&&(
                   <>
-
                     <dl>
+                      <dt>Setor</dt>
+                      <dd>{record.sector||'Não informado'}</dd>
 
-                      <dt>
-                        Tipo / navio
-                      </dt>
-
+                      <dt>Tipo / navio</dt>
                       <dd>
-                        {r.type||'Não informado'} {r.ship}
-                      </dd>
-
-                      <dt>
-                        Aplicação
-                      </dt>
-
-                      <dd>
-                        {fmtDate(
-                          r.applied.slice(
-                            0,
-                            10
-                          )
-                        )}
+                        {record.type||'Não informado'}
                         {' '}
-                        {fmtTime(r.applied)}
+                        {record.ship}
                       </dd>
 
-                      <dt>
-                        Período informado
-                      </dt>
-
+                      <dt>Aplicação</dt>
                       <dd>
-                        {r.period}
+                        {fmtDate(record.applied.slice(0,10))}
+                        {' '}
+                        {fmtTime(record.applied)}
                       </dd>
 
-                      <dt>
-                        Aplicador
-                      </dt>
+                      <dt>Período informado</dt>
+                      <dd>{record.period}</dd>
 
-                      <dd>
-                        {r.applicator||'Não informado'}
-                      </dd>
+                      <dt>Aplicador</dt>
+                      <dd>{record.applicator||'Não informado'}</dd>
 
-                      <dt>
-                        Supervisor
-                      </dt>
+                      <dt>Supervisor</dt>
+                      <dd>{record.supervisor||'Não informado'}</dd>
 
-                      <dd>
-                        {r.supervisor||'Não informado'}
-                      </dd>
-
-                      <dt>
-                        Participantes
-                      </dt>
-
+                      <dt>Participantes</dt>
                       <dd className="pre">
-                        {r.participants||'Não informado'}
+                        {record.participants||'Não informado'}
                       </dd>
 
-                      <dt>
-                        Temas
-                      </dt>
-
+                      <dt>Temas</dt>
                       <dd className="pre">
-                        {r.topics||'Não informado'}
+                        {record.topics||'Não informado'}
                       </dd>
 
-                      <dt>
-                        Foto / assinatura
-                      </dt>
-
+                      <dt>Foto / assinatura</dt>
                       <dd>
-                        {r.photo
-                          ?'Foto indicada'
-                          :'Sem foto'}
+                        {record.photo?'Foto indicada':'Sem foto'}
                         {' · '}
-                        {r.signature
-                          ?'Assinatura indicada'
-                          :'Sem assinatura'}
+                        {record.signature?'Assinatura indicada':'Sem assinatura'}
                       </dd>
-
                     </dl>
 
                     <p className="meta">
                       A exportação informa a presença dos anexos. Os arquivos de foto e assinatura ainda não foram carregados.
                     </p>
 
-                    {issues(
-                      r,
-                      s
-                    ).length>0 && (
+                    {issues(record,s).length>0&&(
                       <p className="alert warning">
-                        Faltam: {issues(r,s).join(', ')}
+                        Faltam: {issues(record,s).join(', ')}
                       </p>
                     )}
 
                     <button
-                      onClick={
-                        ()=>
-                          recordForm(
-                            undefined,
-                            r
-                          )
-                      }
+                      onClick={()=>recordForm(
+                        undefined,
+                        record
+                      )}
                     >
                       Editar registro
                     </button>
-
                   </>
                 )}
 
-                {item && !r && (
+                {item&&!record&&(
                   <div className="modal-actions">
-
                     <button
-                      onClick={
-                        ()=>recordForm(item)
-                      }
+                      onClick={()=>recordForm(item)}
                     >
                       Registrar DDS
                     </button>
 
                     {item.status==='Justificado'
-                      ?
+                      ?(
                         <button
-                          onClick={
-                            ()=>
-                              save({
-                                action:'unjustify',
-                                key:item.key
-                              })
-                          }
+                          onClick={()=>save({
+                            action:'unjustify',
+                            key:item.key
+                          })}
                         >
                           Remover justificativa
                         </button>
-                      :
+                      )
+                      :(
                         <button
                           className="primary"
-                          onClick={
-                            ()=>
-                              setModal({
-                                kind:'justify',
-                                item
-                              })
-                          }
+                          onClick={()=>setModal({
+                            kind:'justify',
+                            item
+                          })}
                         >
                           Justificar
-                        </button>}
-
+                        </button>
+                      )}
                   </div>
                 )}
-
               </div>
             );
           })()}
-
         </Modal>
       )}
-
     </div>
   );
 }
