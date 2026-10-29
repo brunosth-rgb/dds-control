@@ -18,11 +18,11 @@ export type Mapping={
   signature?:string;
 };
 
-function text(value:unknown):string{
+export function textValue(value:unknown):string{
   if(value===null||value===undefined)return '';
 
   if(Array.isArray(value)){
-    return value.map(text).filter(Boolean).join(', ');
+    return value.map(textValue).filter(Boolean).join(', ');
   }
 
   if(typeof value==='object'){
@@ -30,15 +30,32 @@ function text(value:unknown):string{
 
     for(const key of ['value','label','name','text','answer']){
       if(object[key]!==undefined){
-        const found=text(object[key]);
+        const found=textValue(object[key]);
         if(found)return found;
       }
     }
 
-    return Object.values(object).map(text).filter(Boolean).join(', ');
+    return Object.values(object).map(textValue).filter(Boolean).join(', ');
   }
 
   return String(value).trim();
+}
+
+
+export function fields(
+  rows:Record<string,unknown>[]|Record<string,unknown>
+):string[]{
+  const list=Array.isArray(rows)?rows:[rows];
+  const seen=new Set<string>();
+
+  for(const row of list){
+    if(!row||typeof row!=='object')continue;
+    for(const key of Object.keys(row)){
+      if(key)seen.add(key);
+    }
+  }
+
+  return Array.from(seen).sort((a,b)=>a.localeCompare(b,'pt-BR'));
 }
 
 function keyNorm(value:string){
@@ -50,7 +67,7 @@ function mappedValue(
   key:string|undefined
 ){
   if(!key)return '';
-  return text(record[key]);
+  return textValue(record[key]);
 }
 
 function hintedValue(
@@ -64,13 +81,13 @@ function hintedValue(
 
     const exact=entries.find(([key])=>keyNorm(key)===wanted);
     if(exact){
-      const found=text(exact[1]);
+      const found=textValue(exact[1]);
       if(found)return found;
     }
 
     const partial=entries.find(([key])=>keyNorm(key).includes(wanted));
     if(partial){
-      const found=text(partial[1]);
+      const found=textValue(partial[1]);
       if(found)return found;
     }
   }
@@ -145,7 +162,7 @@ function booleanValue(value:unknown){
 }
 
 function sourceOf(record:Record<string,unknown>){
-  const form=text(
+  const form=textValue(
     record.form_name||
     record.formName||
     record.form_title||
@@ -158,7 +175,7 @@ function sourceOf(record:Record<string,unknown>){
 }
 
 function recordId(record:Record<string,unknown>){
-  const id=text(
+  const id=textValue(
     record.col_id||
     record.id||
     record._id||
